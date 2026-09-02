@@ -31,10 +31,14 @@ Your real bookmark tree appears directly on the left, including nested folders t
 Highlights:
 
 - View and open your existing browser bookmarks from the new tab page.
-- Expand bookmark folders of any depth while keeping their state on this device.
-- Create, edit, delete, and drag to reorder up to eight pinned shortcuts.
-- Display website icons using the browser favicon cache, with a direct website fallback.
+- Pin a bookmark to the shortcut area directly from the bookmark sidebar.
+- Expand bookmark folders of any depth, choose a specific folder as the sidebar root, and keep that state on this device.
+- Create, edit, delete, and drag to reorder pinned shortcuts without an app-defined item limit.
+- Organize multiple shortcuts inside a compact, folder-like group card and drag the whole group to reorder it.
+- Search a localized catalog of popular global and Chinese websites when adding a shortcut.
+- Display website icons using the browser favicon cache and locally bundled brand icons, with a direct website fallback.
 - Search with Google, Bing, or DuckDuckGo, or type a complete URL to navigate directly.
+- Choose a bundled background or use a custom image stored only on this device.
 - Choose System, Light, or Dark appearance.
 - Use the interface in English, Simplified Chinese, or Japanese.
 - Open useful browser management pages without requesting history, downloads, tabs, or extension-management access.
@@ -68,10 +72,14 @@ Nook 将每一个新标签页变成安静、专注的浏览器起点。
 主要功能：
 
 - 在新标签页中直接查看并打开当前浏览器的真实书签。
-- 展开任意深度的书签文件夹，并在当前设备记住展开状态。
-- 新增、编辑、删除固定快捷项，并通过拖动调整顺序，最多支持 8 项。
-- 使用浏览器本地图标缓存显示真实网站图标，失败时尝试读取网站自身图标。
+- 直接从左侧书签栏将网页固定到快捷项区域。
+- 展开任意深度的书签文件夹，选择特定文件夹作为侧边栏根目录，并在当前设备记住该状态。
+- 新增、编辑、删除固定快捷项，并通过拖动调整顺序，不设应用内数量上限。
+- 将多个快捷项收纳在一个类似文件夹的紧凑分组卡片中，并可拖动整个分组调整顺序。
+- 添加快捷项时，可搜索根据界面语言排序的国内外常用网站。
+- 使用浏览器本地图标缓存和扩展内置品牌图标显示真实网站图标，必要时尝试读取网站自身图标。
 - 支持 Google、Bing、DuckDuckGo 搜索，也可以输入完整网址直接访问。
+- 选择内置背景，或使用仅保存在当前设备的自定义图片。
 - 支持跟随系统、浅色和深色外观。
 - 支持英文、简体中文和日文。
 - 无需历史记录、下载、标签页或扩展管理权限，即可打开常用浏览器管理页面。
@@ -105,10 +113,14 @@ Nook は、新しいタブを落ち着いて集中できるブラウザのホー
 主な機能：
 
 - 新しいタブから既存のブックマークを表示して開く。
-- 任意の深さのブックマークフォルダーを展開し、端末内に状態を保存。
-- 最大 8 件のショートカットを追加、編集、削除し、ドラッグで並べ替え。
-- ブラウザの favicon キャッシュを利用してサイトアイコンを表示し、必要な場合はサイト自身のアイコンへフォールバック。
+- ブックマークサイドバーからページを直接ピン留め。
+- 任意の深さのブックマークフォルダーを展開し、特定のフォルダーをサイドバーのルートに選択。
+- アプリ固有の件数上限なしでショートカットを追加、編集、削除し、ドラッグで並べ替え。
+- 複数のショートカットをフォルダーのようなコンパクトなグループカードに整理し、グループ全体をドラッグして並べ替え。
+- 言語に合わせて並ぶ中国・海外の人気サイトを検索してショートカットに追加。
+- ブラウザの favicon キャッシュとローカルに同梱したブランドアイコンを利用し、必要な場合はサイト自身のアイコンへフォールバック。
 - Google、Bing、DuckDuckGo による検索と、完全な URL の直接入力。
+- 同梱背景またはこの端末にのみ保存されるカスタム画像を選択。
 - システム、ライト、ダークの外観設定。
 - 英語、簡体字中国語、日本語に対応。
 - 履歴、ダウンロード、タブ、拡張機能管理の権限を要求せず、主要なブラウザ管理ページを開く。

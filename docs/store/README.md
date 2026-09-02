@@ -1,6 +1,6 @@
 # Nook 商店上架文档
 
-本目录包含 Chrome Web Store 与 Microsoft Edge Add-ons 首次上架所需的文字材料。内容基于 Nook `0.1.0` 当前实现：Manifest V3、New Tab override、真实书签树、固定快捷项、搜索、浏览器工具入口、三语言和主题设置。
+本目录包含 Chrome Web Store 与 Microsoft Edge Add-ons 上架所需的文字材料。内容已对齐 Nook `0.2.0` 当前实现：Manifest V3、New Tab override、可选文件夹的真实书签树、可拖动和分组的固定快捷项、网站图标、搜索、浏览器工具入口、三语言、主题和自定义背景。
 
 ## 文档索引
 
@@ -8,7 +8,7 @@
 - [PRIVACY_POLICY.md](./PRIVACY_POLICY.md)：可公开托管的隐私政策
 - [PRIVACY_DISCLOSURES.md](./PRIVACY_DISCLOSURES.md)：Chrome/Edge 后台隐私问卷、单一用途与权限说明
 - [REVIEW_NOTES.md](./REVIEW_NOTES.md)：提供给审核人员的测试说明
-- [RELEASE_NOTES.md](./RELEASE_NOTES.md)：首发版本说明
+- [RELEASE_NOTES.md](./RELEASE_NOTES.md)：版本更新说明
 - [SUPPORT.md](./SUPPORT.md)：可公开托管的支持页面
 - [ASSET_PLAN.md](./ASSET_PLAN.md)：商店图片尺寸与截图内容计划
 - [SUBMISSION_CHECKLIST.md](./SUBMISSION_CHECKLIST.md)：提交前检查清单和已知审核风险

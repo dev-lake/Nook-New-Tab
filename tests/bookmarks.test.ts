@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { collectFolderIds, countBookmarkTree, normalizeBookmarkTree } from '../src/bookmarks';
+import {
+  collectBookmarkFolders,
+  collectFolderIds,
+  countBookmarkTree,
+  findBookmarkFolder,
+  normalizeBookmarkTree,
+} from '../src/bookmarks';
 
 describe('bookmark tree helpers', () => {
   const raw = [{
@@ -29,5 +35,15 @@ describe('bookmark tree helpers', () => {
 
   it('collects recursive folder IDs', () => {
     expect(collectFolderIds(normalizeBookmarkTree(raw))).toEqual(['1', '4']);
+  });
+
+  it('collects nested folder choices and finds the selected folder', () => {
+    const tree = normalizeBookmarkTree(raw);
+    expect(collectBookmarkFolders(tree)).toEqual([
+      { id: '1', title: 'Work', depth: 0 },
+      { id: '4', title: 'Design', depth: 1 },
+    ]);
+    expect(findBookmarkFolder(tree, '4')?.title).toBe('Design');
+    expect(findBookmarkFolder(tree, 'missing')).toBeNull();
   });
 });

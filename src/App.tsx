@@ -4,6 +4,7 @@ import {
   Clock3,
   Download,
   Edit3,
+  FolderPlus,
   GripVertical,
   Grid2X2,
   History,
@@ -17,24 +18,37 @@ import {
   ShoppingBag,
   Sun,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { browserAdapter } from './browser-adapter';
+import { builtInBackgroundPath, isValidCustomBackground } from './backgrounds';
 import { BookmarkTree } from './components/BookmarkTree';
 import { PreferencePopover } from './components/PreferencePopover';
 import { SettingsPopover } from './components/SettingsPopover';
 import { ShortcutFavicon } from './components/ShortcutFavicon';
 import { ShortcutDialog } from './components/ShortcutDialog';
-import { DEFAULT_SETTINGS, MAX_SHORTCUTS } from './defaults';
+import { ShortcutGroupDialog } from './components/ShortcutGroupDialog';
+import { ShortcutGroupMenu } from './components/ShortcutGroupMenu';
+import { ShortcutPickerDialog } from './components/ShortcutPickerDialog';
+import { DEFAULT_SETTINGS } from './defaults';
+import { collectBookmarkFolders, findBookmarkFolder } from './bookmarks';
 import { greetingForHour, localeForIntl, resolveLocale, translations } from './i18n';
 import { buildNavigationTarget, displayDomain } from './search';
-import { reorderShortcuts, type DropPlacement } from './shortcuts';
+import {
+  groupOrderKey,
+  normalizePinnedOrder,
+  reorderPinnedOrder,
+  shortcutOrderKey,
+  type DropPlacement,
+} from './shortcuts';
 import type {
   BookmarkNode,
+  BackgroundPreference,
   BrowserAdapter,
   LocalePreference,
   ResolvedTheme,
   SearchEngineId,
   Shortcut,
+  ShortcutGroup,
   SyncedSettings,
   ThemePreference,
   UtilityTarget,
@@ -57,16 +71,25 @@ export function App({ adapter = browserAdapter }: AppProps) {
   const [settings, setSettings] = useState<SyncedSettings>(DEFAULT_SETTINGS);
   const [bookmarks, setBookmarks] = useState<BookmarkNode[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [bookmarkFolderId, setBookmarkFolderId] = useState<string | null>(null);
+  const [background, setBackground] = useState<BackgroundPreference>('none');
+  const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string | null>(null);
+  const [localUiLoaded, setLocalUiLoaded] = useState(false);
   const [bookmarksLoading, setBookmarksLoading] = useState(true);
   const [bookmarksError, setBookmarksError] = useState(false);
   const [openPanel, setOpenPanel] = useState<'language' | 'theme' | 'settings' | null>(null);
   const [editingShortcut, setEditingShortcut] = useState<Shortcut | null | undefined>(undefined);
+  const [editingGroup, setEditingGroup] = useState<ShortcutGroup | null | undefined>(undefined);
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  const [shortcutPickerOpen, setShortcutPickerOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [toast, setToast] = useState('');
-  const [draggedShortcutId, setDraggedShortcutId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<{ id: string; placement: DropPlacement } | null>(null);
+  const [draggedPinnedKey, setDraggedPinnedKey] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ key: string; placement: DropPlacement } | null>(null);
+  const [pinnedScrollEdges, setPinnedScrollEdges] = useState({ top: false, bottom: false });
   const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   const toastTimer = useRef<number | undefined>(undefined);
+  const shortcutListRef = useRef<HTMLDivElement>(null);
 
   const locale = resolveLocale(settings.locale);
   const t = translations[locale];
@@ -94,10 +117,28 @@ export function App({ adapter = browserAdapter }: AppProps) {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([adapter.loadSettings(), adapter.loadLocalUiState()]).then(([nextSettings, ui]) => {
+    void Promise.allSettled([
+      adapter.loadSettings(),
+      adapter.loadLocalUiState(),
+      adapter.loadCustomBackground(),
+    ]).then(([settingsResult, uiResult, backgroundResult]) => {
       if (!active) return;
-      setSettings(nextSettings);
-      setExpandedIds(new Set(ui.expandedFolderIds));
+      if (settingsResult.status === 'fulfilled') {
+        setSettings(settingsResult.value);
+      }
+      if (uiResult.status === 'fulfilled') {
+        setExpandedIds(new Set(uiResult.value.expandedFolderIds));
+        setBookmarkFolderId(uiResult.value.bookmarkFolderId);
+        setBackground(uiResult.value.background);
+      }
+      if (backgroundResult.status === 'fulfilled' && backgroundResult.value && typeof URL.createObjectURL === 'function') {
+        try {
+          setCustomBackgroundUrl(URL.createObjectURL(backgroundResult.value));
+        } catch {
+          setCustomBackgroundUrl(null);
+        }
+      }
+      setLocalUiLoaded(true);
     });
     void loadBookmarks();
     const unsubscribeBookmarks = adapter.subscribeToBookmarks(() => void loadBookmarks());
@@ -116,11 +157,17 @@ export function App({ adapter = browserAdapter }: AppProps) {
     return () => media.removeEventListener('change', listener);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!localUiLoaded) return;
     document.documentElement.dataset.theme = resolvedTheme;
     document.documentElement.lang = locale;
     document.title = t.pageTitle;
-  }, [locale, resolvedTheme, t.pageTitle]);
+    try {
+      window.localStorage.setItem('nook-theme', settings.theme);
+    } catch {
+      // A disabled storage backend should not prevent the New Tab page from rendering.
+    }
+  }, [localUiLoaded, locale, resolvedTheme, settings.theme, t.pageTitle]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
@@ -128,6 +175,12 @@ export function App({ adapter = browserAdapter }: AppProps) {
   }, []);
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  useEffect(() => () => {
+    if (customBackgroundUrl && typeof URL.revokeObjectURL === 'function') {
+      URL.revokeObjectURL(customBackgroundUrl);
+    }
+  }, [customBackgroundUrl]);
 
   const saveSettings = useCallback(async (next: SyncedSettings, successMessage?: string) => {
     const previous = settings;
@@ -150,11 +203,130 @@ export function App({ adapter = browserAdapter }: AppProps) {
       const next = new Set(current);
       if (expanded) next.add(node.id);
       else next.delete(node.id);
-      void adapter.saveLocalUiState({ expandedFolderIds: [...next] }).catch(() => showToast(t.saveFailed));
+      void adapter.saveLocalUiState({
+        expandedFolderIds: [...next],
+        bookmarkFolderId,
+        background,
+      }).catch(() => showToast(t.saveFailed));
       return next;
     });
     showToast(expanded ? t.folderExpanded(node.title) : t.folderCollapsed(node.title));
-  }, [adapter, showToast, t]);
+  }, [adapter, background, bookmarkFolderId, showToast, t]);
+
+  const bookmarkFolders = useMemo(() => collectBookmarkFolders(bookmarks), [bookmarks]);
+  const selectedBookmarkFolder = useMemo(
+    () => bookmarkFolderId ? findBookmarkFolder(bookmarks, bookmarkFolderId) : null,
+    [bookmarks, bookmarkFolderId],
+  );
+  const visibleBookmarks = bookmarkFolderId && selectedBookmarkFolder
+    ? (selectedBookmarkFolder.children ?? [])
+    : bookmarks;
+  const pinnedShortcutUrls = useMemo(
+    () => new Set(settings.shortcuts.map((shortcut) => new URL(shortcut.url).toString())),
+    [settings.shortcuts],
+  );
+  const shortcutById = useMemo(
+    () => new Map(settings.shortcuts.map((shortcut) => [shortcut.id, shortcut])),
+    [settings.shortcuts],
+  );
+  const groupById = useMemo(
+    () => new Map(settings.shortcutGroups.map((group) => [group.id, group])),
+    [settings.shortcutGroups],
+  );
+  const currentPinnedOrder = useMemo(
+    () => normalizePinnedOrder(settings.pinnedOrder, settings.shortcuts, settings.shortcutGroups),
+    [settings.pinnedOrder, settings.shortcutGroups, settings.shortcuts],
+  );
+
+  const updatePinnedScrollEdges = useCallback(() => {
+    const list = shortcutListRef.current;
+    if (!list) return;
+    const next = {
+      top: list.scrollTop > 1,
+      bottom: list.scrollTop + list.clientHeight < list.scrollHeight - 1,
+    };
+    setPinnedScrollEdges((current) => (
+      current.top === next.top && current.bottom === next.bottom ? current : next
+    ));
+  }, []);
+
+  useEffect(() => {
+    if (!localUiLoaded) return;
+    const list = shortcutListRef.current;
+    if (!list) return;
+    updatePinnedScrollEdges();
+    window.addEventListener('resize', updatePinnedScrollEdges);
+    const observer = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(updatePinnedScrollEdges);
+    observer?.observe(list);
+    return () => {
+      window.removeEventListener('resize', updatePinnedScrollEdges);
+      observer?.disconnect();
+    };
+  }, [currentPinnedOrder.length, localUiLoaded, updatePinnedScrollEdges]);
+
+  useEffect(() => {
+    if (!localUiLoaded || bookmarksLoading || !bookmarkFolderId || selectedBookmarkFolder) return;
+    setBookmarkFolderId(null);
+    void adapter.saveLocalUiState({
+      expandedFolderIds: [...expandedIds],
+      bookmarkFolderId: null,
+      background,
+    }).catch(() => showToast(t.saveFailed));
+  }, [adapter, background, bookmarkFolderId, bookmarksLoading, expandedIds, localUiLoaded, selectedBookmarkFolder, showToast, t.saveFailed]);
+
+  const handleBookmarkFolderChange = (nextFolderId: string | null) => {
+    const previous = bookmarkFolderId;
+    setBookmarkFolderId(nextFolderId);
+    void adapter.saveLocalUiState({
+      expandedFolderIds: [...expandedIds],
+      bookmarkFolderId: nextFolderId,
+      background,
+    }).catch(() => {
+      setBookmarkFolderId(previous);
+      showToast(t.saveFailed);
+    });
+  };
+
+  const handleBackgroundChange = (nextBackground: BackgroundPreference) => {
+    const previous = background;
+    setBackground(nextBackground);
+    void adapter.saveLocalUiState({
+      expandedFolderIds: [...expandedIds],
+      bookmarkFolderId,
+      background: nextBackground,
+    }).catch(() => {
+      setBackground(previous);
+      showToast(t.saveFailed);
+    });
+  };
+
+  const handleCustomBackgroundUpload = async (file: File) => {
+    if (!isValidCustomBackground(file)) {
+      showToast(t.invalidBackground);
+      return;
+    }
+    try {
+      await adapter.saveCustomBackground(file);
+      if (typeof URL.createObjectURL === 'function') {
+        setCustomBackgroundUrl(URL.createObjectURL(file));
+      }
+      handleBackgroundChange('custom');
+    } catch {
+      showToast(t.saveFailed);
+    }
+  };
+
+  const handleRemoveCustomBackground = async () => {
+    try {
+      await adapter.clearCustomBackground();
+      setCustomBackgroundUrl(null);
+      if (background === 'custom') handleBackgroundChange('none');
+    } catch {
+      showToast(t.saveFailed);
+    }
+  };
 
   const navigate = useCallback(async (url: string) => {
     try {
@@ -187,15 +359,112 @@ export function App({ adapter = browserAdapter }: AppProps) {
     const nextShortcuts = isEditing
       ? settings.shortcuts.map((item) => item.id === nextShortcut.id ? nextShortcut : item)
       : [...settings.shortcuts, nextShortcut];
+    const nextOrder = isEditing
+      ? currentPinnedOrder
+      : [...currentPinnedOrder, shortcutOrderKey(nextShortcut.id)];
     setEditingShortcut(undefined);
-    void saveSettings({ ...settings, shortcuts: nextShortcuts }, t.shortcutSaved);
+    setShortcutPickerOpen(false);
+    void saveSettings({ ...settings, shortcuts: nextShortcuts, pinnedOrder: nextOrder }, t.shortcutSaved);
+  };
+
+  const pinBookmark = (node: BookmarkNode) => {
+    if (!node.url || pinnedShortcutUrls.has(new URL(node.url).toString())) return;
+    saveShortcut({
+      title: node.title.trim() || displayDomain(node.url),
+      url: new URL(node.url).toString(),
+    });
   };
 
   const deleteShortcut = () => {
     if (!editingShortcut) return;
     const next = settings.shortcuts.filter((item) => item.id !== editingShortcut.id);
+    const nextGroups = settings.shortcutGroups
+      .map((group) => ({ ...group, shortcutIds: group.shortcutIds.filter((id) => id !== editingShortcut.id) }))
+      .filter((group) => group.shortcutIds.length >= 2);
+    const nextGroupIds = new Set(nextGroups.map((group) => group.id));
+    const nextOrderBase = currentPinnedOrder.flatMap((key) => {
+      if (key === shortcutOrderKey(editingShortcut.id)) return [];
+      if (!key.startsWith('group:')) return [key];
+      const groupId = key.slice('group:'.length);
+      if (nextGroupIds.has(groupId)) return [key];
+      const dissolvedGroup = groupById.get(groupId);
+      return dissolvedGroup
+        ? dissolvedGroup.shortcutIds
+            .filter((id) => id !== editingShortcut.id)
+            .map(shortcutOrderKey)
+        : [];
+    });
+    const nextOrder = normalizePinnedOrder(nextOrderBase, next, nextGroups);
     setEditingShortcut(undefined);
-    void saveSettings({ ...settings, shortcuts: next }, t.shortcutDeleted);
+    void saveSettings({ ...settings, shortcuts: next, shortcutGroups: nextGroups, pinnedOrder: nextOrder }, t.shortcutDeleted);
+  };
+
+  const saveShortcutGroup = (value: Pick<ShortcutGroup, 'title' | 'shortcutIds'>) => {
+    const nextGroup: ShortcutGroup = editingGroup
+      ? { ...editingGroup, ...value }
+      : { id: crypto.randomUUID(), ...value };
+    const selectedIds = new Set(nextGroup.shortcutIds);
+    const nextGroups = settings.shortcutGroups
+      .filter((group) => group.id !== nextGroup.id)
+      .map((group) => ({ ...group, shortcutIds: group.shortcutIds.filter((id) => !selectedIds.has(id)) }))
+      .filter((group) => group.shortcutIds.length >= 2);
+    const previousIndex = settings.shortcutGroups.findIndex((group) => group.id === nextGroup.id);
+    nextGroups.splice(previousIndex < 0 ? nextGroups.length : Math.min(previousIndex, nextGroups.length), 0, nextGroup);
+    const targetGroupKey = groupOrderKey(nextGroup.id);
+    const selectedShortcutKeys = new Set(nextGroup.shortcutIds.map(shortcutOrderKey));
+    const affectedGroupKeys = new Set(
+      settings.shortcutGroups
+        .filter((group) => group.id === nextGroup.id || group.shortcutIds.some((id) => selectedIds.has(id)))
+        .map((group) => groupOrderKey(group.id)),
+    );
+    const anchorKeys = new Set<string>([targetGroupKey, ...selectedShortcutKeys, ...affectedGroupKeys]);
+    const nextGroupIds = new Set(nextGroups.map((group) => group.id));
+    const insertionMarker = '\0nook-group-insertion';
+    let markerInserted = false;
+    const nextOrderBase = currentPinnedOrder.flatMap((key) => {
+      const values: string[] = [];
+      if (!markerInserted && anchorKeys.has(key)) {
+        values.push(insertionMarker);
+        markerInserted = true;
+      }
+      if (key === targetGroupKey || selectedShortcutKeys.has(key)) return values;
+      if (key.startsWith('group:')) {
+        const groupId = key.slice('group:'.length);
+        if (!nextGroupIds.has(groupId)) {
+          const dissolvedGroup = groupById.get(groupId);
+          if (dissolvedGroup) {
+            values.push(...dissolvedGroup.shortcutIds
+              .filter((id) => !selectedIds.has(id))
+              .map(shortcutOrderKey));
+          }
+          return values;
+        }
+      }
+      values.push(key);
+      return values;
+    });
+    if (!markerInserted) nextOrderBase.push(insertionMarker);
+    const nextOrder = normalizePinnedOrder(
+      nextOrderBase.map((key) => key === insertionMarker ? targetGroupKey : key),
+      settings.shortcuts,
+      nextGroups,
+    );
+    setEditingGroup(undefined);
+    setOpenGroupId(null);
+    void saveSettings({ ...settings, shortcutGroups: nextGroups, pinnedOrder: nextOrder }, t.groupSaved);
+  };
+
+  const deleteShortcutGroup = () => {
+    if (!editingGroup) return;
+    const nextGroups = settings.shortcutGroups.filter((group) => group.id !== editingGroup.id);
+    const targetGroupKey = groupOrderKey(editingGroup.id);
+    const nextOrderBase = currentPinnedOrder.flatMap((key) => (
+      key === targetGroupKey ? editingGroup.shortcutIds.map(shortcutOrderKey) : [key]
+    ));
+    const nextOrder = normalizePinnedOrder(nextOrderBase, settings.shortcuts, nextGroups);
+    setEditingGroup(undefined);
+    setOpenGroupId(null);
+    void saveSettings({ ...settings, shortcutGroups: nextGroups, pinnedOrder: nextOrder }, t.groupDeleted);
   };
 
   const dropPlacementForEvent = (event: React.DragEvent<HTMLElement>): DropPlacement => {
@@ -206,17 +475,17 @@ export function App({ adapter = browserAdapter }: AppProps) {
     return event.clientX < bounds.left + bounds.width / 2 ? 'before' : 'after';
   };
 
-  const handleShortcutDrop = (event: React.DragEvent<HTMLDivElement>, targetId: string) => {
+  const handlePinnedDrop = (event: React.DragEvent<HTMLDivElement>, targetKey: string) => {
     event.preventDefault();
-    const sourceId = draggedShortcutId || event.dataTransfer.getData('text/plain');
-    const placement = dropTarget?.id === targetId
+    const sourceKey = draggedPinnedKey || event.dataTransfer.getData('text/plain');
+    const placement = dropTarget?.key === targetKey
       ? dropTarget.placement
       : dropPlacementForEvent(event);
-    setDraggedShortcutId(null);
+    setDraggedPinnedKey(null);
     setDropTarget(null);
-    const nextShortcuts = reorderShortcuts(settings.shortcuts, sourceId, targetId, placement);
-    if (nextShortcuts === settings.shortcuts) return;
-    void saveSettings({ ...settings, shortcuts: nextShortcuts }, t.shortcutsReordered);
+    const nextOrder = reorderPinnedOrder(currentPinnedOrder, sourceKey, targetKey, placement);
+    if (nextOrder === currentPinnedOrder) return;
+    void saveSettings({ ...settings, pinnedOrder: nextOrder }, t.shortcutsReordered);
   };
 
   const dateText = new Intl.DateTimeFormat(localeForIntl(locale), {
@@ -239,16 +508,45 @@ export function App({ adapter = browserAdapter }: AppProps) {
     { id: 'store' as const, title: t.storeTitle },
   ], [t]);
 
+  const openShortcutGroup = settings.shortcutGroups.find((group) => group.id === openGroupId);
+  const openGroupShortcuts = openShortcutGroup
+    ? openShortcutGroup.shortcutIds.flatMap((id) => shortcutById.get(id) ?? [])
+    : [];
+
+  const backgroundImageUrl = background === 'custom'
+    ? customBackgroundUrl
+    : builtInBackgroundPath(background);
+
+  if (!localUiLoaded) {
+    return (
+      <div className="app-loading" aria-label="Nook" aria-busy="true">
+        <span className="app-loading-mark" aria-hidden="true">N</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      data-background={backgroundImageUrl ? 'true' : undefined}
+      style={backgroundImageUrl
+        ? { '--nook-background-image': `url("${backgroundImageUrl}")` } as React.CSSProperties
+        : undefined}
+    >
       <BookmarkTree
-        nodes={bookmarks}
+        nodes={visibleBookmarks}
         expandedIds={expandedIds}
         loading={bookmarksLoading}
         error={bookmarksError}
+        adapter={adapter}
+        bookmarkFolderId={bookmarkFolderId && selectedBookmarkFolder ? bookmarkFolderId : null}
+        bookmarkFolders={bookmarkFolders}
+        pinnedUrls={pinnedShortcutUrls}
         t={t}
         onToggle={handleFolderToggle}
+        onBookmarkFolderChange={handleBookmarkFolderChange}
         onNavigate={(url) => void navigate(url)}
+        onPinBookmark={pinBookmark}
         onViewAll={() => void openUtility('bookmarks')}
         onRetry={() => void loadBookmarks()}
       />
@@ -326,8 +624,13 @@ export function App({ adapter = browserAdapter }: AppProps) {
                 open={openPanel === 'settings'}
                 t={t}
                 searchEngine={settings.searchEngine}
+                background={backgroundImageUrl || background !== 'custom' ? background : 'none'}
+                customBackgroundUrl={customBackgroundUrl}
                 onClose={() => setOpenPanel(null)}
                 onSearchEngineChange={(value: SearchEngineId) => updateSettings('searchEngine', value)}
+                onBackgroundChange={handleBackgroundChange}
+                onCustomBackgroundUpload={(file) => void handleCustomBackgroundUpload(file)}
+                onRemoveCustomBackground={() => void handleRemoveCustomBackground()}
                 onImportBookmarks={() => void openUtility('import')}
               />
             </div>
@@ -341,51 +644,101 @@ export function App({ adapter = browserAdapter }: AppProps) {
           </section>
 
           <section className="pinned-section">
-            <div className="section-heading"><h2>{t.pinned}</h2></div>
-            <div className="shortcut-list">
-              {settings.shortcuts.map((shortcut) => (
-                <div
-                  className={`shortcut${draggedShortcutId === shortcut.id ? ' is-dragging' : ''}${dropTarget?.id === shortcut.id ? ` drop-${dropTarget.placement}` : ''}`}
-                  key={shortcut.id}
-                  draggable
-                  onDragStart={(event) => {
+            <div className="section-heading">
+              <h2>{t.pinned}</h2>
+              <div className="pinned-heading-actions">
+                <button
+                  className="add-shortcut"
+                  type="button"
+                  disabled={settings.shortcuts.length < 2}
+                  onClick={() => setEditingGroup(null)}
+                >
+                  <FolderPlus size={14} />
+                  {t.createGroup}
+                </button>
+                <button className="add-shortcut" type="button" onClick={() => setShortcutPickerOpen(true)}>
+                  <Plus size={14} />
+                  {t.addShortcut}
+                </button>
+              </div>
+            </div>
+            <div
+              className="shortcut-list"
+              ref={shortcutListRef}
+              data-fade-top={pinnedScrollEdges.top || undefined}
+              data-fade-bottom={pinnedScrollEdges.bottom || undefined}
+              onScroll={updatePinnedScrollEdges}
+            >
+              {currentPinnedOrder.map((orderKey) => {
+                const dragClassName = `${draggedPinnedKey === orderKey ? ' is-dragging' : ''}${dropTarget?.key === orderKey ? ` drop-${dropTarget.placement}` : ''}`;
+                const dragHandlers = {
+                  draggable: true,
+                  onDragStart: (event: React.DragEvent<HTMLDivElement>) => {
                     event.dataTransfer.effectAllowed = 'move';
-                    event.dataTransfer.setData('text/plain', shortcut.id);
-                    setDraggedShortcutId(shortcut.id);
-                  }}
-                  onDragOver={(event) => {
+                    event.dataTransfer.setData('text/plain', orderKey);
+                    setDraggedPinnedKey(orderKey);
+                  },
+                  onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
                     event.preventDefault();
                     event.dataTransfer.dropEffect = 'move';
                     const placement = dropPlacementForEvent(event);
-                    if (dropTarget?.id !== shortcut.id || dropTarget.placement !== placement) {
-                      setDropTarget({ id: shortcut.id, placement });
+                    if (dropTarget?.key !== orderKey || dropTarget.placement !== placement) {
+                      setDropTarget({ key: orderKey, placement });
                     }
-                  }}
-                  onDrop={(event) => handleShortcutDrop(event, shortcut.id)}
-                  onDragEnd={() => {
-                    setDraggedShortcutId(null);
+                  },
+                  onDrop: (event: React.DragEvent<HTMLDivElement>) => handlePinnedDrop(event, orderKey),
+                  onDragEnd: () => {
+                    setDraggedPinnedKey(null);
                     setDropTarget(null);
-                  }}
-                >
-                  <button className="shortcut-open" type="button" onClick={() => void navigate(shortcut.url)}>
-                    <ShortcutFavicon adapter={adapter} title={shortcut.title} url={shortcut.url} />
-                    <span><strong>{shortcut.title}</strong><small>{displayDomain(shortcut.url)}</small></span>
-                  </button>
-                  <span className="shortcut-drag-indicator" title={t.dragShortcut(shortcut.title)} aria-hidden="true">
-                    <GripVertical size={13} />
-                  </span>
-                  <button className="shortcut-edit" type="button" aria-label={`${t.editShortcut}: ${shortcut.title}`} onClick={() => setEditingShortcut(shortcut)}>
-                    <Edit3 size={14} />
-                  </button>
-                </div>
-              ))}
-              <button className="add-shortcut" type="button" onClick={() => {
-                if (settings.shortcuts.length >= MAX_SHORTCUTS) showToast(t.shortcutLimit);
-                else setEditingShortcut(null);
-              }}>
-                <Plus size={18} />
-                {t.addShortcut}
-              </button>
+                  },
+                };
+
+                if (orderKey.startsWith('shortcut:')) {
+                  const shortcut = shortcutById.get(orderKey.slice('shortcut:'.length));
+                  if (!shortcut) return null;
+                  return (
+                    <div className={`shortcut${dragClassName}`} key={orderKey} {...dragHandlers}>
+                      <button className="shortcut-open" type="button" onClick={() => void navigate(shortcut.url)}>
+                        <ShortcutFavicon adapter={adapter} title={shortcut.title} url={shortcut.url} />
+                        <span><strong>{shortcut.title}</strong><small>{displayDomain(shortcut.url)}</small></span>
+                      </button>
+                      <span className="shortcut-drag-indicator" title={t.dragShortcut(shortcut.title)} aria-hidden="true">
+                        <GripVertical size={13} />
+                      </span>
+                      <button className="shortcut-edit" type="button" aria-label={`${t.editShortcut}: ${shortcut.title}`} onClick={() => setEditingShortcut(shortcut)}>
+                        <Edit3 size={14} />
+                      </button>
+                    </div>
+                  );
+                }
+
+                const group = groupById.get(orderKey.slice('group:'.length));
+                if (!group) return null;
+                const members = group.shortcutIds.flatMap((id) => shortcutById.get(id) ?? []);
+                return (
+                  <div className={`shortcut shortcut-group-card${dragClassName}`} key={orderKey} {...dragHandlers}>
+                    <button
+                      className="shortcut-open group-open"
+                      type="button"
+                      aria-label={t.openGroup(group.title, members.length)}
+                      onClick={() => setOpenGroupId(group.id)}
+                    >
+                      <span className="group-mark" aria-hidden="true">
+                        {members.slice(0, 4).map((shortcut) => (
+                          <ShortcutFavicon key={shortcut.id} adapter={adapter} title={shortcut.title} url={shortcut.url} />
+                        ))}
+                      </span>
+                      <span><strong>{group.title}</strong><small>{t.groupItemCount(members.length)}</small></span>
+                    </button>
+                    <span className="shortcut-drag-indicator" title={t.dragShortcut(group.title)} aria-hidden="true">
+                      <GripVertical size={13} />
+                    </span>
+                    <button className="shortcut-edit" type="button" aria-label={`${t.editGroup}: ${group.title}`} onClick={() => setEditingGroup(group)}>
+                      <Edit3 size={14} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </section>
 
@@ -424,6 +777,48 @@ export function App({ adapter = browserAdapter }: AppProps) {
           onCancel={() => setEditingShortcut(undefined)}
           onSave={saveShortcut}
           onDelete={editingShortcut ? deleteShortcut : undefined}
+        />
+      )}
+
+      {shortcutPickerOpen && (
+        <ShortcutPickerDialog
+          adapter={adapter}
+          existingShortcuts={settings.shortcuts}
+          locale={locale}
+          t={t}
+          onCancel={() => setShortcutPickerOpen(false)}
+          onSelect={saveShortcut}
+          onCustom={() => {
+            setShortcutPickerOpen(false);
+            setEditingShortcut(null);
+          }}
+        />
+      )}
+
+      {editingGroup !== undefined && (
+        <ShortcutGroupDialog
+          adapter={adapter}
+          group={editingGroup}
+          shortcuts={settings.shortcuts}
+          t={t}
+          onCancel={() => setEditingGroup(undefined)}
+          onSave={saveShortcutGroup}
+          onDelete={editingGroup ? deleteShortcutGroup : undefined}
+        />
+      )}
+
+      {openShortcutGroup && (
+        <ShortcutGroupMenu
+          adapter={adapter}
+          group={openShortcutGroup}
+          shortcuts={openGroupShortcuts}
+          t={t}
+          onClose={() => setOpenGroupId(null)}
+          onEdit={() => {
+            setOpenGroupId(null);
+            setEditingGroup(openShortcutGroup);
+          }}
+          onNavigate={(url) => void navigate(url)}
         />
       )}
 

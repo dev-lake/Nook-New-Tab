@@ -3,6 +3,7 @@ export type LocalePreference = 'auto' | Locale;
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
 export type SearchEngineId = 'google' | 'bing' | 'duckduckgo';
+export type BackgroundPreference = 'none' | 'mist' | 'dunes' | 'midnight' | 'custom';
 
 export interface Shortcut {
   id: string;
@@ -10,16 +11,26 @@ export interface Shortcut {
   url: string;
 }
 
+export interface ShortcutGroup {
+  id: string;
+  title: string;
+  shortcutIds: string[];
+}
+
 export interface SyncedSettings {
-  schemaVersion: 1;
+  schemaVersion: 3;
   locale: LocalePreference;
   theme: ThemePreference;
   searchEngine: SearchEngineId;
   shortcuts: Shortcut[];
+  shortcutGroups: ShortcutGroup[];
+  pinnedOrder: string[];
 }
 
 export interface LocalUiState {
   expandedFolderIds: string[];
+  bookmarkFolderId: string | null;
+  background: BackgroundPreference;
 }
 
 export interface BookmarkNode {
@@ -51,4 +62,7 @@ export interface BrowserAdapter {
   subscribeToSettings(listener: (settings: SyncedSettings) => void): () => void;
   loadLocalUiState(): Promise<LocalUiState>;
   saveLocalUiState(state: LocalUiState): Promise<void>;
+  loadCustomBackground(): Promise<Blob | null>;
+  saveCustomBackground(image: Blob): Promise<void>;
+  clearCustomBackground(): Promise<void>;
 }

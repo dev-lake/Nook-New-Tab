@@ -4,10 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>New Tab — Nook</title>
+    <script src="/theme-bootstrap.js"></script>
+    <title>Nook</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-loading" aria-label="Nook" aria-busy="true">
+        <span class="app-loading-mark" aria-hidden="true">N</span>
+      </div>
+    </div>
     <script type="module" src="./main.tsx"></script>
   </body>
 </html>

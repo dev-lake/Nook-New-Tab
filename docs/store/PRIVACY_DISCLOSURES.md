@@ -14,11 +14,11 @@ Required to read the user's existing bookmark tree and listen for bookmark chang
 
 ### `storage`
 
-Required to save user-selected language, theme, search engine, pinned shortcut titles, URLs and ordering, and expanded-folder interface state. Preferences and pinned shortcuts use browser-managed sync storage; folder expansion state uses local storage. The developer does not operate a separate synchronization service.
+Required to save user-selected language, theme, search engine, pinned shortcut titles, URLs, ordering and group membership, selected bookmark folder, background preference, and expanded-folder interface state. Preferences, pinned shortcuts, and shortcut groups use browser-managed sync storage; the last theme preference is additionally cached in the extension page solely to prevent an incorrect first-paint color, while interface and background preferences use local storage. A user-selected custom background image is stored only in the extension's local IndexedDB database on the current browser profile and is not synchronized or uploaded by Nook. The developer does not operate a separate synchronization service.
 
 ### `favicon`
 
-Required to retrieve browser-cached website icons for pinned shortcuts on the New Tab page. If a cached icon is unavailable, Nook may request the pinned website's own `/favicon.ico` resource. The permission is not used to inspect browsing history or page content.
+Required to retrieve browser-cached website icons on the New Tab page. If a cached icon is unavailable, Nook uses a locally bundled brand icon when possible, then may request conventional icon resources from the website itself. The permission is not used to inspect browsing history or page content.
 
 ## Host permissions
 

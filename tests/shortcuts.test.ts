@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reorderShortcuts } from '../src/shortcuts';
+import { normalizePinnedOrder, reorderPinnedOrder, reorderShortcuts } from '../src/shortcuts';
 import type { Shortcut } from '../src/types';
 
 const shortcuts: Shortcut[] = [
@@ -19,5 +19,19 @@ describe('shortcut ordering', () => {
   it('keeps the same array when the move is invalid', () => {
     expect(reorderShortcuts(shortcuts, 'missing', 'a', 'before')).toBe(shortcuts);
     expect(reorderShortcuts(shortcuts, 'a', 'a', 'after')).toBe(shortcuts);
+  });
+
+  it('moves groups and shortcuts in the same top-level order', () => {
+    const order = ['shortcut:a', 'group:work', 'shortcut:b'];
+    expect(reorderPinnedOrder(order, 'group:work', 'shortcut:b', 'after'))
+      .toEqual(['shortcut:a', 'shortcut:b', 'group:work']);
+  });
+
+  it('normalizes stored order to the current ungrouped shortcuts and groups', () => {
+    expect(normalizePinnedOrder(
+      ['group:work', 'shortcut:c', 'shortcut:c', 'shortcut:missing'],
+      shortcuts,
+      [{ id: 'work', title: 'Work', shortcutIds: ['a', 'b'] }],
+    )).toEqual(['group:work', 'shortcut:c']);
   });
 });

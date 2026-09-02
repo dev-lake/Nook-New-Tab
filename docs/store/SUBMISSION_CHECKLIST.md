@@ -6,7 +6,7 @@
 - [ ] 将 `PRIVACY_POLICY.md` 和 `SUPPORT.md` 发布到无需登录即可访问的 HTTPS 页面。
 - [ ] 确认隐私政策上的发布者名称与 Chrome/Edge 开发者账号一致。
 - [ ] 使用专门的演示书签数据制作商店截图，清除私人信息。
-- [ ] 确认版本号仍为首次提交所需版本，并在每次重新上传时递增。
+- [ ] 确认当前提交版本为 `0.2.0`，并在每次重新上传时递增。
 
 ## 2. Chrome 搜索政策风险
 
@@ -52,7 +52,7 @@
 ## 5. Chrome Web Store
 
 - [ ] 注册并验证开发者账号与联系邮箱。
-- [ ] 上传 `.output/nook-new-tab-0.1.0-chrome.zip`。
+- [ ] 上传 `.output/nook-new-tab-0.2.0-chrome.zip`。
 - [ ] 分类选择 Productivity。
 - [ ] 填写三种语言的详细描述。
 - [ ] 上传 128×128 图标、至少一张 1280×800 截图和宣传素材。
@@ -65,7 +65,7 @@
 ## 6. Microsoft Edge Add-ons
 
 - [ ] 注册 Microsoft Partner Center Edge 开发者账号。
-- [ ] 上传 `.output/nook-new-tab-0.1.0-edge.zip`。
+- [ ] 上传 `.output/nook-new-tab-0.2.0-edge.zip`。
 - [ ] Visibility 选择 Public 或按发布计划选择 Hidden。
 - [ ] Markets 确认目标市场。
 - [ ] 分类选择 Productivity，填写支持联系方式。

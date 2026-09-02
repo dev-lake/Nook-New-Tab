@@ -48,3 +48,29 @@ export function collectFolderIds(nodes: BookmarkNode[]): string[] {
     return [node.id, ...collectFolderIds(node.children ?? [])];
   });
 }
+
+export type BookmarkFolderOption = {
+  id: string;
+  title: string;
+  depth: number;
+};
+
+export function collectBookmarkFolders(nodes: BookmarkNode[], depth = 0): BookmarkFolderOption[] {
+  return nodes.flatMap((node) => {
+    if (node.url) return [];
+    return [
+      { id: node.id, title: node.title, depth },
+      ...collectBookmarkFolders(node.children ?? [], depth + 1),
+    ];
+  });
+}
+
+export function findBookmarkFolder(nodes: BookmarkNode[], id: string): BookmarkNode | null {
+  for (const node of nodes) {
+    if (node.url) continue;
+    if (node.id === id) return node;
+    const match = findBookmarkFolder(node.children ?? [], id);
+    if (match) return match;
+  }
+  return null;
+}

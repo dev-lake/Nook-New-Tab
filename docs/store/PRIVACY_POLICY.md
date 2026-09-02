@@ -17,9 +17,10 @@ This Privacy Policy explains how the Nook browser extension handles information 
 Nook accesses the following information only to provide visible extension features:
 
 - Browser bookmarks: bookmark titles, URLs, folder structure, and bookmark change events are read to display the bookmark tree. Bookmark contents are not copied into extension storage.
-- User-created shortcuts and preferences: shortcut titles and URLs, shortcut order, language, theme, and selected search engine are stored through the browser's extension storage APIs.
-- Local interface state: expanded bookmark folder identifiers are stored on the current device.
-- Website icons: Nook first asks the browser for a cached favicon. If no cached icon is available, the extension may request `/favicon.ico` directly from the corresponding pinned website with the referrer omitted.
+- User-created shortcuts and preferences: shortcut titles and URLs, shortcut order, group names and membership, language, theme, and selected search engine are stored through the browser's extension storage APIs.
+- Local interface state: expanded bookmark folder identifiers, the selected bookmark folder, and the selected background are stored on the current device.
+- Custom background image: if the user chooses an image, its file contents are stored in the extension's local IndexedDB database on the current browser profile. Nook does not synchronize or upload this image.
+- Website icons: Nook first asks the browser for a cached favicon, then uses a locally bundled brand icon when available. If neither is available, the extension may request conventional icon files directly from the corresponding website with the referrer omitted.
 
 ### 3. How information is used
 
@@ -27,7 +28,7 @@ The information above is used only to display bookmarks, remember interface choi
 
 ### 4. Storage and synchronization
 
-Preferences and pinned shortcuts are stored using `storage.sync`, which means the browser provider may synchronize them through the user's signed-in browser account according to that provider's terms and privacy policy. Expanded bookmark folder state is stored using `storage.local` on the current browser profile.
+Preferences and pinned shortcuts are stored using `storage.sync`, which means the browser provider may synchronize them through the user's signed-in browser account according to that provider's terms and privacy policy. The last theme preference is also cached locally in the extension page so the correct appearance can be applied before the New Tab page's first paint. Expanded bookmark folder state, selected bookmark folder, and background preference are stored using `storage.local` on the current browser profile. A custom background image is stored separately in the extension's local IndexedDB database and is not synchronized by Nook.
 
 Nook does not operate or receive data from the browser synchronization service.
 
@@ -39,7 +40,7 @@ Network requests can occur when a user:
 
 - submits a search, in which case the browser navigates to the selected search provider;
 - opens a bookmark, shortcut, or store link, in which case the browser navigates to that destination; or
-- displays a pinned website icon and the browser has no cached favicon, in which case Nook may request the website's own `/favicon.ico` resource without a referrer.
+- displays a website icon and neither a cached nor bundled icon is available, in which case Nook may request that website's own conventional icon resources without a referrer.
 
 Those destinations process requests under their own privacy policies. Nook does not add tracking parameters to these requests.
 
@@ -49,7 +50,7 @@ Nook does not sell, rent, or share user information with advertisers, data broke
 
 ### 7. Retention and deletion
 
-Data remains in browser-managed storage until the user changes or deletes a shortcut, resets browser extension data, disables browser synchronization, or uninstalls the extension. The browser provider may retain synchronized copies according to the user's browser account settings and the provider's policies.
+Data remains in browser-managed storage until the user changes or deletes it, resets browser extension data, disables browser synchronization, or uninstalls the extension. A custom background can also be removed directly from Nook's settings. The browser provider may retain synchronized copies according to the user's browser account settings and the provider's policies.
 
 ### 8. Security
 
@@ -82,9 +83,10 @@ Questions about this policy can be sent to `[SUPPORT_EMAIL]`.
 Nook 仅为提供用户可见功能而访问以下信息：
 
 - 浏览器书签：读取书签标题、网址、文件夹结构和书签变更事件，用于显示书签树；书签内容不会复制到扩展存储。
-- 用户创建的快捷项与偏好设置：快捷项名称、网址和顺序，以及语言、主题、搜索引擎设置，通过浏览器扩展存储 API 保存。
-- 本地界面状态：已展开书签文件夹的标识符保存在当前设备。
-- 网站图标：Nook 首先读取浏览器缓存的 favicon；如果没有缓存图标，扩展可能在不发送来源页信息的情况下，直接请求相应固定网站的 `/favicon.ico`。
+- 用户创建的快捷项与偏好设置：快捷项名称、网址和顺序、分组名称与成员关系，以及语言、主题、搜索引擎设置，通过浏览器扩展存储 API 保存。
+- 本地界面状态：已展开书签文件夹的标识符、选中的书签文件夹和背景选择保存在当前设备。
+- 自定义背景图片：如果用户选择图片，图片文件会保存在当前浏览器配置中的扩展本地 IndexedDB 数据库。Nook 不会同步或上传该图片。
+- 网站图标：Nook 首先读取浏览器缓存的 favicon，并在可用时使用随扩展本地打包的品牌图标。如果两者都不可用，扩展可能在不发送来源页信息的情况下，直接请求相应网站自身的常规图标文件。
 
 ### 3. 信息用途
 
@@ -92,7 +94,7 @@ Nook 仅为提供用户可见功能而访问以下信息：
 
 ### 4. 存储与同步
 
-偏好设置和固定快捷项使用 `storage.sync` 保存，因此浏览器提供商可能根据其服务条款和隐私政策，通过用户登录的浏览器账号同步这些数据。书签文件夹展开状态使用 `storage.local` 保存在当前浏览器配置中。
+偏好设置和固定快捷项使用 `storage.sync` 保存，因此浏览器提供商可能根据其服务条款和隐私政策，通过用户登录的浏览器账号同步这些数据。最近一次主题偏好也会缓存在扩展页面本地，仅用于在新标签页首次绘制前应用正确外观。书签文件夹展开状态、选中的书签文件夹和背景偏好使用 `storage.local` 保存在当前浏览器配置中。自定义背景图片单独保存在扩展的本地 IndexedDB 数据库中，Nook 不会同步该图片。
 
 Nook 不运营浏览器同步服务，也不会从该服务接收数据。
 
@@ -100,7 +102,7 @@ Nook 不运营浏览器同步服务，也不会从该服务接收数据。
 
 Nook 没有开发者控制的服务器，不会把书签、设置、快捷项、搜索内容或使用分析发送给开发者。
 
-以下操作会产生网络请求：提交搜索、打开书签或快捷项、访问扩展商店，以及在浏览器没有缓存图标时请求固定网站自身的 `/favicon.ico`。目标网站或搜索服务会根据其自身隐私政策处理请求。Nook 不添加跟踪参数。
+以下操作会产生网络请求：提交搜索、打开书签或快捷项、访问扩展商店，以及在浏览器缓存和本地打包图标都不可用时请求该网站自身的常规图标文件。目标网站或搜索服务会根据其自身隐私政策处理请求。Nook 不添加跟踪参数。
 
 ### 6. 分享与出售
 
@@ -108,7 +110,7 @@ Nook 不会向广告商、数据经纪商或其他第三方出售、出租或分
 
 ### 7. 保留与删除
 
-数据会保留在浏览器管理的存储中，直至用户修改或删除快捷项、清除扩展数据、关闭浏览器同步或卸载扩展。浏览器提供商可能根据浏览器账号设置和其自身政策保留同步副本。
+数据会保留在浏览器管理的存储中，直至用户修改或删除、清除扩展数据、关闭浏览器同步或卸载扩展。自定义背景也可以直接在 Nook 设置中移除。浏览器提供商可能根据浏览器账号设置和其自身政策保留同步副本。
 
 ### 8. 安全
 

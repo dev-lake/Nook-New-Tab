@@ -16,11 +16,23 @@ Confirm that Nook is enabled and has the Bookmarks permission. Nook displays HTT
 
 ### Why is a website icon showing letters?
 
-Nook first uses the browser's cached favicon and then tries the website's own `/favicon.ico`. If neither source provides an icon, Nook displays a short text fallback.
+Nook first uses the browser's cached favicon, then a locally bundled brand icon when available, and finally the website's own conventional icon files. If none provides an icon, Nook displays a short text fallback.
 
 ### How do I reorder pinned shortcuts?
 
-Drag a pinned shortcut card and drop it before or after another card. The new order is stored with the rest of your browser-synced Nook preferences.
+Drag a pinned shortcut or group card and drop it before or after another card. The new order is stored with the rest of your browser-synced Nook preferences.
+
+### How do I organize pinned shortcuts into a group?
+
+Select "Create group" in the Pinned heading, enter a name, and choose at least two shortcuts. The selected shortcuts appear inside one folder-like card. Open the card to access its members, use its edit control to change membership, or choose "Dissolve group" to return every member to the main grid.
+
+### How do I remove Chrome's footer below Nook?
+
+Open Nook Settings and expand "Hide Chrome footer" for the current instructions. The footer belongs to Chrome and cannot be hidden automatically by an extension. You can right-click the footer and choose "Hide footer on New Tab page," or open "Customize Chrome," select "Footer," and turn the footer off. A managed browser may let an administrator control this option.
+
+### Where is my custom background stored?
+
+The selected image is stored only in Nook's local extension database in the current browser profile. Nook does not upload or synchronize it. Use "Remove custom image" in Settings to delete it.
 
 ### How do I delete Nook data?
 

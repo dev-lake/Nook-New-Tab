@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { clearCustomBackground, loadCustomBackground, saveCustomBackground } from './background-storage';
 import { normalizeBookmarkTree } from './bookmarks';
 import { detectBrowserFlavor, utilityUrl } from './browser-targets';
 import { sanitizeLocalUiState, sanitizeSettings } from './storage';
@@ -84,4 +85,8 @@ export const browserAdapter: BrowserAdapter = {
   async saveLocalUiState(state) {
     await browser.storage.local.set({ [LOCAL_UI_KEY]: sanitizeLocalUiState(state) });
   },
+
+  loadCustomBackground,
+  saveCustomBackground,
+  clearCustomBackground,
 };
