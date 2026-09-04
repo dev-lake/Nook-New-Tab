@@ -1,11 +1,13 @@
 import { Edit3, ExternalLink, Folder, X } from 'lucide-react';
 import type { Translation } from '../i18n';
 import { displayDomain } from '../search';
-import type { BrowserAdapter, Shortcut, ShortcutGroup } from '../types';
+import type { BrowserAdapter, Locale, Shortcut, ShortcutGroup } from '../types';
 import { ShortcutFavicon } from './ShortcutFavicon';
+import { ShortcutEnhancementMeta } from './ShortcutEnhancementMeta';
 
 type ShortcutGroupMenuProps = {
-  adapter: Pick<BrowserAdapter, 'getFaviconUrl'>;
+  adapter: BrowserAdapter;
+  locale: Locale;
   group: ShortcutGroup;
   shortcuts: Shortcut[];
   t: Translation;
@@ -14,7 +16,7 @@ type ShortcutGroupMenuProps = {
   onNavigate: (url: string) => void;
 };
 
-export function ShortcutGroupMenu({ adapter, group, shortcuts, t, onClose, onEdit, onNavigate }: ShortcutGroupMenuProps) {
+export function ShortcutGroupMenu({ adapter, locale, group, shortcuts, t, onClose, onEdit, onNavigate }: ShortcutGroupMenuProps) {
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
@@ -35,7 +37,12 @@ export function ShortcutGroupMenu({ adapter, group, shortcuts, t, onClose, onEdi
           {shortcuts.map((shortcut) => (
             <button key={shortcut.id} type="button" onClick={() => onNavigate(shortcut.url)}>
               <ShortcutFavicon adapter={adapter} title={shortcut.title} url={shortcut.url} />
-              <span><strong>{shortcut.title}</strong><small>{displayDomain(shortcut.url)}</small></span>
+              <span>
+                <strong>{shortcut.title}</strong>
+                {shortcut.enhancement
+                  ? <ShortcutEnhancementMeta adapter={adapter} shortcut={shortcut} locale={locale} t={t} />
+                  : <small>{displayDomain(shortcut.url)}</small>}
+              </span>
               <ExternalLink size={14} />
             </button>
           ))}

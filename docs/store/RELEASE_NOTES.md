@@ -1,5 +1,22 @@
 # Release Notes
 
+## Version 0.4.0
+
+- Adds a localized toolbar popup for reviewing or editing the current HTTP/HTTPS page's name and URL before saving it to Pinned, with duplicate, validation, success, and sync-error feedback. Matching GitHub repository and profile URLs offer their optional live-data enhancement directly in this popup.
+- Adds a subtle, localized and dismissible rating prompt in the bottom-right corner. Chrome uses store ID `iamfgplmbhngnpjhegjoddlgifnilfah` to open the direct reviews page; Edge uses its installed ID. Closing snoozes the prompt for 21 days, while opening the rating destination marks it completed.
+- Improves bookmark-sidebar density and overflow behavior, removes the unwanted tree connector and hides its scrollbar until interaction.
+- Fixes shortcut drag-and-drop at the first grid position and prevents the first Browser utilities hover label from being clipped.
+
+## Version 0.3.0
+
+- Adds an extensible, packaged shortcut-component framework with opt-in permissions, validated data, and local caching.
+- Offers optional repository counters and public GitHub account summaries directly in the ordinary shortcut editor, with no required GitHub sign-in or separate component-edit mode in Settings.
+- Displays GitHub live information inside the existing shortcut card. Enhanced shortcuts can be edited, grouped, removed, and drag-reordered exactly like ordinary shortcuts.
+- Fixes disabling GitHub live data from an existing shortcut so the component and its local cache are removed immediately after saving.
+- Adds a GitHub public-page fallback when the anonymous API rate limit is exhausted, distinguishes missing/private repositories from temporary failures, and no longer blocks saving during a recoverable outage.
+- Adds optional GitHub account information to `github.com` home-page and one-segment Profile shortcuts. Home-page shortcuts accept a public username; Profile URLs fill it automatically and display the username, followers, and public repositories inside the existing card.
+- Requests GitHub API and public-page access only when enabling a repository or profile shortcut component.
+
 ## Version 0.2.0
 
 - Adds a searchable popular-site picker with localized ordering and reliable bundled icons.

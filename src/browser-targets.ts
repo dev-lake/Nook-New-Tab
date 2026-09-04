@@ -1,5 +1,7 @@
 import type { BrowserFlavor, UtilityTarget } from './types';
 
+export const CHROME_STORE_EXTENSION_ID = 'iamfgplmbhngnpjhegjoddlgifnilfah';
+
 const UTILITY_URLS: Record<BrowserFlavor, Record<UtilityTarget, string>> = {
   chrome: {
     bookmarks: 'chrome://bookmarks/',
@@ -27,4 +29,12 @@ export function detectBrowserFlavor(userAgent: string): BrowserFlavor {
 
 export function utilityUrl(target: UtilityTarget, flavor: BrowserFlavor): string {
   return UTILITY_URLS[flavor][target];
+}
+
+export function reviewUrl(flavor: BrowserFlavor, extensionId: string): string {
+  const id = (flavor === 'chrome' ? CHROME_STORE_EXTENSION_ID : extensionId).trim();
+  if (!/^[a-p]{32}$/.test(id)) return UTILITY_URLS[flavor].store;
+  return flavor === 'edge'
+    ? `https://microsoftedge.microsoft.com/addons/detail/${id}`
+    : `https://chromewebstore.google.com/detail/${id}/reviews`;
 }

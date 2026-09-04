@@ -1,18 +1,26 @@
 import { browser } from 'wxt/browser';
 import { clearCustomBackground, loadCustomBackground, saveCustomBackground } from './background-storage';
 import { normalizeBookmarkTree } from './bookmarks';
-import { detectBrowserFlavor, utilityUrl } from './browser-targets';
+import { detectBrowserFlavor, reviewUrl, utilityUrl } from './browser-targets';
 import { sanitizeLocalUiState, sanitizeSettings } from './storage';
 import type {
   BookmarkNode,
   BrowserAdapter,
   LocalUiState,
+  PluginCacheEntry,
+  PluginId,
   SyncedSettings,
   UtilityTarget,
 } from './types';
 
 const SETTINGS_KEY = 'settings';
 const LOCAL_UI_KEY = 'uiState';
+const PLUGIN_CACHE_PREFIX = 'pluginCache:';
+
+const PLUGIN_ORIGINS: Record<PluginId, string[]> = {
+  'github-repository': ['https://api.github.com/*', 'https://github.com/*'],
+  'github-profile': ['https://api.github.com/*', 'https://github.com/*'],
+};
 
 async function updateCurrentTab(url: string): Promise<void> {
   await browser.tabs.update({ url });
@@ -48,6 +56,10 @@ export const browserAdapter: BrowserAdapter = {
 
   async openUtility(target) {
     await updateCurrentTab(utilityUrl(target, detectBrowserFlavor(navigator.userAgent)));
+  },
+
+  async openReviewPage() {
+    await updateCurrentTab(reviewUrl(detectBrowserFlavor(navigator.userAgent), browser.runtime.id));
   },
 
   async navigateExternal(url) {
@@ -89,4 +101,40 @@ export const browserAdapter: BrowserAdapter = {
   loadCustomBackground,
   saveCustomBackground,
   clearCustomBackground,
+
+  async hasPluginAccess(pluginId) {
+    return browser.permissions.contains({ origins: PLUGIN_ORIGINS[pluginId] });
+  },
+
+  async requestPluginAccess(pluginId) {
+    return browser.permissions.request({ origins: PLUGIN_ORIGINS[pluginId] });
+  },
+
+  async loadPluginCache(instanceId): Promise<PluginCacheEntry | null> {
+    const key = `${PLUGIN_CACHE_PREFIX}${instanceId}`;
+    const stored = await browser.storage.local.get(key);
+    const value = stored[key];
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const candidate = value as Partial<PluginCacheEntry>;
+    if (
+      !['github-repository', 'github-profile'].includes(candidate.pluginId ?? '')
+      || typeof candidate.configKey !== 'string'
+      || typeof candidate.updatedAt !== 'number'
+      || !Number.isFinite(candidate.updatedAt)
+    ) return null;
+    return {
+      pluginId: candidate.pluginId as PluginId,
+      configKey: candidate.configKey,
+      updatedAt: candidate.updatedAt,
+      data: candidate.data,
+    };
+  },
+
+  async savePluginCache(instanceId, entry) {
+    await browser.storage.local.set({ [`${PLUGIN_CACHE_PREFIX}${instanceId}`]: entry });
+  },
+
+  async removePluginCache(instanceId) {
+    await browser.storage.local.remove(`${PLUGIN_CACHE_PREFIX}${instanceId}`);
+  },
 };

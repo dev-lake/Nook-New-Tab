@@ -4,7 +4,7 @@
 
 ## Single purpose
 
-Nook replaces the browser's New Tab page with a focused workspace that displays the user's existing bookmark tree, editable pinned shortcuts, search, and compact links to browser management pages. All features support this single purpose of making bookmarks and routine browser navigation accessible from the New Tab page.
+Nook replaces the browser's New Tab page with a focused workspace that displays the user's existing bookmark tree, editable pinned shortcuts with optional URL-matched public repository data, search, and compact browser-management links. The toolbar action also lets the user add the current page to those pinned shortcuts with one click. All features support this single purpose of making bookmarks and routine browser information accessible from the New Tab page.
 
 ## Permission justifications
 
@@ -14,19 +14,26 @@ Required to read the user's existing bookmark tree and listen for bookmark chang
 
 ### `storage`
 
-Required to save user-selected language, theme, search engine, pinned shortcut titles, URLs, ordering and group membership, selected bookmark folder, background preference, and expanded-folder interface state. Preferences, pinned shortcuts, and shortcut groups use browser-managed sync storage; the last theme preference is additionally cached in the extension page solely to prevent an incorrect first-paint color, while interface and background preferences use local storage. A user-selected custom background image is stored only in the extension's local IndexedDB database on the current browser profile and is not synchronized or uploaded by Nook. The developer does not operate a separate synchronization service.
+Required to save user-selected language, theme, search engine, pinned shortcut titles, URLs, ordering, group membership and component configurations, selected bookmark folder, background preference, and expanded-folder interface state. Preferences, pinned shortcuts, shortcut groups, and component configurations use browser-managed sync storage; the last theme preference and optional rating prompt's completed or three-week snooze state are cached locally in the extension page, while interface preferences and live-data API responses use local storage. A user-selected custom background image is stored only in the extension's local IndexedDB database on the current browser profile and is not synchronized or uploaded by Nook. The developer does not operate a separate synchronization service.
 
 ### `favicon`
 
 Required to retrieve browser-cached website icons on the New Tab page. If a cached icon is unavailable, Nook uses a locally bundled brand icon when possible, then may request conventional icon resources from the website itself. The permission is not used to inspect browsing history or page content.
 
-## Host permissions
+### `activeTab`
 
-None requested.
+Required to read the current tab's URL and title only after the user explicitly clicks the Nook toolbar icon. Nook validates that the URL uses HTTP or HTTPS, checks for an existing identical shortcut, and stores a new shortcut through browser-managed sync storage. Access is temporary and user-initiated; Nook does not continuously monitor tabs, read page contents, or collect browsing history.
+
+## Optional host permissions
+
+- `https://api.github.com/*`: requested only after the user enables live data on a GitHub public-repository or public-profile shortcut, to retrieve the selected public metadata and counters.
+- `https://github.com/*`: requested at the same opt-in moment and used only to retrieve the corresponding public repository or profile page when GitHub's anonymous API is temporarily rate-limited or unavailable.
+
+These permissions are optional and are not granted at installation. Nook requests only the public repository selected by the user and does not inspect unrelated tabs, private account data, browsing history, or page content.
 
 ## Permissions deliberately not requested
 
-Nook does not request `tabs`, `history`, `downloads`, `management`, or host permissions. Browser utility buttons navigate the current New Tab to browser-owned management URLs and do not read data from those APIs.
+Nook does not request the persistent `tabs`, `history`, `downloads`, or `management` permissions. Its `activeTab` access is limited to the tab on which the user clicks the toolbar action. It requests only the optional API-host access described above after an explicit component action. Browser utility buttons navigate the current New Tab to browser-owned management URLs and do not read data from those APIs.
 
 ## Remote code
 
@@ -34,7 +41,7 @@ Select: **No, I am not using remote code.**
 
 Justification if a text field is shown:
 
-Nook is a Manifest V3 extension. All executable JavaScript and CSS are packaged with the extension. The extension does not download, evaluate, or execute remotely hosted code. Website favicon files are images only and are never executed.
+Nook is a Manifest V3 extension. All executable JavaScript and CSS, including every component implementation, are packaged with the extension. The extension does not download, evaluate, or execute remotely hosted code. GitHub returns data only. Website favicon files are images only and are never executed.
 
 ## Data usage questionnaire
 
@@ -47,11 +54,16 @@ Recommended response for the current build:
 - Use unrelated to the extension's single purpose: **No**
 - Human access to user data: **No**
 
+Provider-specific disclosure:
+
+- GitHub component: disclose a user-entered public repository identifier or public username if the form offers a relevant user-content or website-content category. It is transmitted directly to GitHub only to return the selected public metadata.
+- The request is not received or retained by the Nook developer.
+
 Reasoning:
 
-Nook processes bookmarks locally for an explicitly visible feature. Browser-managed `storage.sync` may synchronize preferences and pinned shortcuts under the user's browser account, but Nook does not operate or receive data from that service. Search and navigation requests go only to destinations selected by the user. Favicon fallback requests go directly to the pinned website, not to a developer or analytics service.
+Nook processes bookmarks locally for an explicitly visible feature. When the user clicks the toolbar action, the active page title and HTTP/HTTPS URL are used locally to create a pinned shortcut. Browser-managed `storage.sync` may synchronize preferences, pinned shortcuts, and component configurations under the user's browser account, but Nook does not operate or receive data from that service. Search and navigation requests go only to destinations selected by the user. Favicon fallback requests go directly to the pinned website. User-enabled GitHub repository and profile components request public information directly from GitHub. No request is sent to a developer or analytics service.
 
-If a store form defines “collection” to include any local API access rather than transmission to the developer, disclose bookmark URLs/titles conservatively in the closest category offered by that form and explain that processing is local-only. Do not select “no data” if analytics, crash reporting, a backend, or any developer-controlled network service is added later.
+If a store form defines “collection” to include any local API access or transmission to a third-party data provider rather than transmission to the developer, disclose bookmark URLs/titles, public repository identifiers, and selected public GitHub usernames conservatively in the closest categories offered by that form. Explain which values stay local and which are sent directly to GitHub for an enabled feature. Do not select “no data” if analytics, crash reporting, a backend, or any developer-controlled network service is added later.
 
 ## Limited Use certifications
 

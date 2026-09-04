@@ -1,6 +1,6 @@
 # Nook 商店上架文档
 
-本目录包含 Chrome Web Store 与 Microsoft Edge Add-ons 上架所需的文字材料。内容已对齐 Nook `0.2.0` 当前实现：Manifest V3、New Tab override、可选文件夹的真实书签树、可拖动和分组的固定快捷项、网站图标、搜索、浏览器工具入口、三语言、主题和自定义背景。
+本目录包含 Chrome Web Store 与 Microsoft Edge Add-ons 上架所需的文字材料。内容已对齐 Nook `0.4.0` 当前实现：Manifest V3、New Tab override、可选文件夹的真实书签树、带确认窗口和可选增强功能的工具栏一键添加、可拖动和分组的固定快捷项、在普通快捷项编辑窗口中配置的 GitHub 仓库与账号组件、网站图标、搜索、三语言、主题、自定义背景和可关闭的好评引导。主页面底部与侧边栏底部组件当前未开放。
 
 ## 文档索引
 

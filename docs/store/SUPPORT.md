@@ -34,9 +34,25 @@ Open Nook Settings and expand "Hide Chrome footer" for the current instructions.
 
 The selected image is stored only in Nook's local extension database in the current browser profile. Nook does not upload or synchronize it. Use "Remove custom image" in Settings to delete it.
 
+### Why is a component asking for site access?
+
+When you enable live data on a GitHub public-repository or public-profile shortcut, Nook retrieves the selected public information directly from GitHub. Access to GitHub's API and public pages is requested only after you opt in. The API is preferred; the public page is used as a fallback when anonymous API requests are temporarily limited. If access is declined or later removed, ordinary shortcuts and the rest of Nook continue working.
+
+### How do I add a component?
+
+Edit a compatible GitHub shortcut with its normal card edit button. The same dialog offers the matching repository or profile component, so it can be enabled, configured, or disabled without a separate mode in Settings. Main-page and sidebar-bottom components are not currently available.
+
+### Why is a component showing old data?
+
+Nook keeps the last successful GitHub result on this device so a new tab can render quickly and remain useful offline. It refreshes stale information automatically. When GitHub temporarily limits anonymous API requests, Nook tries the matching public repository page; cached data remains visible if both routes are temporarily unavailable.
+
+### How does account information work on GitHub shortcuts?
+
+A shortcut to `github.com/username` fills the public username automatically. A shortcut to the GitHub home page cannot identify the signed-in account without authentication, so Nook asks which public username to display. Only public profile counters are requested; Nook does not read the signed-in GitHub session.
+
 ### How do I delete Nook data?
 
-Delete individual pinned shortcuts from their edit dialog. To remove all Nook data, uninstall the extension and clear its synchronized extension data through the browser account or sync settings where available.
+Delete individual pinned shortcuts from their edit dialog. Deleting an enhanced shortcut also removes its live-data cache from the current profile. To remove all Nook data, uninstall the extension and clear its synchronized extension data through the browser account or sync settings where available.
 
 ### Does Nook upload my bookmarks?
 

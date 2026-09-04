@@ -1,4 +1,5 @@
 {
   "extName": { "message": "Nook — 新しいタブ" },
-  "extDescription": { "message": "ブックマークツリーとブラウザツールを静かな新しいタブに。" }
+  "extDescription": { "message": "ブックマーク、スマートショートカット、ブラウザツールを静かな新しいタブに。" },
+  "actionAddCurrentPage": { "message": "このページを Nook に追加" }
 }

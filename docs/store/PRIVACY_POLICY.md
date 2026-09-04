@@ -1,6 +1,6 @@
 # Nook Privacy Policy / Nook 隐私政策
 
-Effective date / 生效日期：2026-08-11
+Effective date / 生效日期：2026-09-04
 
 Publisher / 发布者：`[PUBLISHER_NAME]`
 
@@ -18,17 +18,20 @@ Nook accesses the following information only to provide visible extension featur
 
 - Browser bookmarks: bookmark titles, URLs, folder structure, and bookmark change events are read to display the bookmark tree. Bookmark contents are not copied into extension storage.
 - User-created shortcuts and preferences: shortcut titles and URLs, shortcut order, group names and membership, language, theme, and selected search engine are stored through the browser's extension storage APIs.
-- Local interface state: expanded bookmark folder identifiers, the selected bookmark folder, and the selected background are stored on the current device.
+- Toolbar-added shortcuts: only when the user clicks the Nook toolbar icon, Nook temporarily reads the active page title and HTTP/HTTPS URL to create a shortcut. Nook does not continuously monitor tabs or read page contents.
+- Component configurations: public GitHub repository names and public profile usernames selected for enhanced shortcuts are stored through the browser's extension storage APIs.
+- Local interface state: expanded bookmark folder identifiers, the selected bookmark folder, the selected background, and whether the optional rating prompt is completed or snoozed are stored on the current device.
+- Live-data cache: the last successful public GitHub repository or profile responses and their update times are cached on the current device so components can render quickly and remain useful when temporarily offline or rate-limited.
 - Custom background image: if the user chooses an image, its file contents are stored in the extension's local IndexedDB database on the current browser profile. Nook does not synchronize or upload this image.
 - Website icons: Nook first asks the browser for a cached favicon, then uses a locally bundled brand icon when available. If neither is available, the extension may request conventional icon files directly from the corresponding website with the referrer omitted.
 
 ### 3. How information is used
 
-The information above is used only to display bookmarks, remember interface choices, provide pinned shortcuts, and show website icons on the New Tab page. It is not used for advertising, profiling, credit decisions, or unrelated purposes.
+The information above is used only to display bookmarks, remember interface choices, create and provide pinned shortcuts and their optional components, and show website icons on the New Tab page. It is not used for advertising, profiling, credit decisions, or unrelated purposes.
 
 ### 4. Storage and synchronization
 
-Preferences and pinned shortcuts are stored using `storage.sync`, which means the browser provider may synchronize them through the user's signed-in browser account according to that provider's terms and privacy policy. The last theme preference is also cached locally in the extension page so the correct appearance can be applied before the New Tab page's first paint. Expanded bookmark folder state, selected bookmark folder, and background preference are stored using `storage.local` on the current browser profile. A custom background image is stored separately in the extension's local IndexedDB database and is not synchronized by Nook.
+Preferences, pinned shortcuts, and component configurations are stored using `storage.sync`, which means the browser provider may synchronize them through the user's signed-in browser account according to that provider's terms and privacy policy. The last theme preference is also cached locally in the extension page so the correct appearance can be applied before the New Tab page's first paint. The optional rating prompt's completed or three-week snooze state is likewise kept in extension-page local storage. Expanded bookmark folder state, selected bookmark folder, background preference, and live-data response caches are stored using `storage.local` on the current browser profile. A custom background image is stored separately in the extension's local IndexedDB database and is not synchronized by Nook.
 
 Nook does not operate or receive data from the browser synchronization service.
 
@@ -39,18 +42,19 @@ Nook has no developer-controlled server and does not send bookmarks, settings, s
 Network requests can occur when a user:
 
 - submits a search, in which case the browser navigates to the selected search provider;
-- opens a bookmark, shortcut, or store link, in which case the browser navigates to that destination; or
-- displays a website icon and neither a cached nor bundled icon is available, in which case Nook may request that website's own conventional icon resources without a referrer.
+- opens a bookmark, shortcut, or store link, in which case the browser navigates to that destination;
+- displays a website icon and neither a cached nor bundled icon is available, in which case Nook may request that website's own conventional icon resources without a referrer;
+- enables or updates a public GitHub repository or profile shortcut, in which case the public repository owner/name or selected public username is sent directly to GitHub's API; if that anonymous API request is rate-limited or temporarily unavailable, Nook may request the matching public GitHub page as a fallback.
 
 Those destinations process requests under their own privacy policies. Nook does not add tracking parameters to these requests.
 
 ### 6. Sharing and sale
 
-Nook does not sell, rent, or share user information with advertisers, data brokers, or other third parties. Nook does not use user information for personalized advertising and does not permit human review of user data.
+Nook does not sell or rent user information and does not share it with advertisers or data brokers. It transmits only the minimum public-repository or public-profile API/page request to GitHub as described above when the user enables the corresponding component. Nook does not use user information for personalized advertising and does not permit the developer to review user data.
 
 ### 7. Retention and deletion
 
-Data remains in browser-managed storage until the user changes or deletes it, resets browser extension data, disables browser synchronization, or uninstalls the extension. A custom background can also be removed directly from Nook's settings. The browser provider may retain synchronized copies according to the user's browser account settings and the provider's policies.
+Data remains in browser-managed storage until the user changes or deletes it, resets browser extension data, disables browser synchronization, or uninstalls the extension. Deleting an enhanced shortcut also removes its current-device cache. A custom background can also be removed directly from Nook's settings. The browser provider may retain synchronized copies according to the user's browser account settings and the provider's policies.
 
 ### 8. Security
 
@@ -84,17 +88,20 @@ Nook 仅为提供用户可见功能而访问以下信息：
 
 - 浏览器书签：读取书签标题、网址、文件夹结构和书签变更事件，用于显示书签树；书签内容不会复制到扩展存储。
 - 用户创建的快捷项与偏好设置：快捷项名称、网址和顺序、分组名称与成员关系，以及语言、主题、搜索引擎设置，通过浏览器扩展存储 API 保存。
-- 本地界面状态：已展开书签文件夹的标识符、选中的书签文件夹和背景选择保存在当前设备。
+- 通过工具栏添加的快捷项：仅当用户点击 Nook 工具栏图标时，Nook 才会临时读取当前页面标题和 HTTP/HTTPS 网址来创建快捷项；Nook 不会持续监控标签页或读取页面内容。
+- 组件配置：增强快捷项对应的 GitHub 公开仓库名称和用户选择的公开账号用户名，通过浏览器扩展存储 API 保存。
+- 本地界面状态：已展开书签文件夹的标识符、选中的书签文件夹、背景选择，以及可选好评提示的完成或延后状态保存在当前设备。
+- 实时数据缓存：最近一次成功获取的 GitHub 公开仓库或账号数据及更新时间缓存在当前设备，以便组件快速显示，并在临时断网或接口限流时继续使用。
 - 自定义背景图片：如果用户选择图片，图片文件会保存在当前浏览器配置中的扩展本地 IndexedDB 数据库。Nook 不会同步或上传该图片。
 - 网站图标：Nook 首先读取浏览器缓存的 favicon，并在可用时使用随扩展本地打包的品牌图标。如果两者都不可用，扩展可能在不发送来源页信息的情况下，直接请求相应网站自身的常规图标文件。
 
 ### 3. 信息用途
 
-上述信息仅用于显示书签、记住界面选择、提供固定快捷项和显示网站图标，不用于广告、画像、信用决策或任何无关目的。
+上述信息仅用于显示书签、记住界面选择、创建并提供固定快捷项及其可选组件，以及显示网站图标，不用于广告、画像、信用决策或任何无关目的。
 
 ### 4. 存储与同步
 
-偏好设置和固定快捷项使用 `storage.sync` 保存，因此浏览器提供商可能根据其服务条款和隐私政策，通过用户登录的浏览器账号同步这些数据。最近一次主题偏好也会缓存在扩展页面本地，仅用于在新标签页首次绘制前应用正确外观。书签文件夹展开状态、选中的书签文件夹和背景偏好使用 `storage.local` 保存在当前浏览器配置中。自定义背景图片单独保存在扩展的本地 IndexedDB 数据库中，Nook 不会同步该图片。
+偏好设置、固定快捷项和组件配置使用 `storage.sync` 保存，因此浏览器提供商可能根据其服务条款和隐私政策，通过用户登录的浏览器账号同步这些数据。最近一次主题偏好也会缓存在扩展页面本地，仅用于在新标签页首次绘制前应用正确外观；可选好评提示的完成或三周延后状态同样保存在扩展页面本地存储中。书签文件夹展开状态、选中的书签文件夹、背景偏好和实时数据接口响应缓存使用 `storage.local` 保存在当前浏览器配置中。自定义背景图片单独保存在扩展的本地 IndexedDB 数据库中，Nook 不会同步该图片。
 
 Nook 不运营浏览器同步服务，也不会从该服务接收数据。
 
@@ -102,15 +109,15 @@ Nook 不运营浏览器同步服务，也不会从该服务接收数据。
 
 Nook 没有开发者控制的服务器，不会把书签、设置、快捷项、搜索内容或使用分析发送给开发者。
 
-以下操作会产生网络请求：提交搜索、打开书签或快捷项、访问扩展商店，以及在浏览器缓存和本地打包图标都不可用时请求该网站自身的常规图标文件。目标网站或搜索服务会根据其自身隐私政策处理请求。Nook 不添加跟踪参数。
+以下操作会产生网络请求：提交搜索、打开书签或快捷项、访问扩展商店、在浏览器缓存和本地打包图标都不可用时请求该网站自身的常规图标文件，以及用户为匹配的 GitHub 仓库或账号快捷项启用实时数据时直接访问 GitHub API。GitHub 匿名 API 被限流或临时不可用时，Nook 可能回退请求对应的 GitHub 公开页面。公开仓库的所有者和仓库名或用户选择的公开用户名会发送给 GitHub。目标网站和数据服务会根据其自身隐私政策处理请求。Nook 不添加跟踪参数，也不会把这些请求发送给开发者。
 
 ### 6. 分享与出售
 
-Nook 不会向广告商、数据经纪商或其他第三方出售、出租或分享用户信息，不使用用户信息进行个性化广告，也不允许人工查看用户数据。
+Nook 不会出售或出租用户信息，也不会向广告商或数据经纪商分享信息。仅在用户启用相应组件时，才会按上述说明向 GitHub API 或对应公开仓库/Profile 页面发送实现功能所需的最少请求数据。Nook 不使用用户信息进行个性化广告，也不允许开发者人工查看用户数据。
 
 ### 7. 保留与删除
 
-数据会保留在浏览器管理的存储中，直至用户修改或删除、清除扩展数据、关闭浏览器同步或卸载扩展。自定义背景也可以直接在 Nook 设置中移除。浏览器提供商可能根据浏览器账号设置和其自身政策保留同步副本。
+数据会保留在浏览器管理的存储中，直至用户修改或删除、清除扩展数据、关闭浏览器同步或卸载扩展。删除增强快捷项时，会删除其当前设备缓存；自定义背景可以直接在 Nook 设置中移除。浏览器提供商可能根据浏览器账号设置和其自身政策保留同步副本。
 
 ### 8. 安全
 

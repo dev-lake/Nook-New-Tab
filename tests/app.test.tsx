@@ -1,15 +1,20 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import { DEFAULT_SETTINGS } from '../src/defaults';
 import type { BrowserAdapter, SyncedSettings } from '../src/types';
 
 vi.mock('wxt/browser', () => ({ browser: {} }));
 
+beforeEach(() => window.localStorage.clear());
+
 function createAdapter(initialSettings: SyncedSettings = DEFAULT_SETTINGS): BrowserAdapter & {
   saveSettings: ReturnType<typeof vi.fn>;
   saveLocalUiState: ReturnType<typeof vi.fn>;
+  requestPluginAccess: ReturnType<typeof vi.fn>;
+  loadPluginCache: ReturnType<typeof vi.fn>;
+  savePluginCache: ReturnType<typeof vi.fn>;
 } {
   return {
     getFaviconUrl: vi.fn((url: string) => `chrome-extension://test/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`),
@@ -20,6 +25,7 @@ function createAdapter(initialSettings: SyncedSettings = DEFAULT_SETTINGS): Brow
     }]),
     subscribeToBookmarks: vi.fn(() => () => undefined),
     openUtility: vi.fn().mockResolvedValue(undefined),
+    openReviewPage: vi.fn().mockResolvedValue(undefined),
     navigateExternal: vi.fn().mockResolvedValue(undefined),
     loadSettings: vi.fn().mockResolvedValue(structuredClone(initialSettings)),
     saveSettings: vi.fn().mockResolvedValue(undefined),
@@ -29,6 +35,11 @@ function createAdapter(initialSettings: SyncedSettings = DEFAULT_SETTINGS): Brow
     loadCustomBackground: vi.fn().mockResolvedValue(null),
     saveCustomBackground: vi.fn().mockResolvedValue(undefined),
     clearCustomBackground: vi.fn().mockResolvedValue(undefined),
+    hasPluginAccess: vi.fn().mockResolvedValue(true),
+    requestPluginAccess: vi.fn().mockResolvedValue(true),
+    loadPluginCache: vi.fn().mockResolvedValue(null),
+    savePluginCache: vi.fn().mockResolvedValue(undefined),
+    removePluginCache: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -56,6 +67,26 @@ describe('App integration', () => {
     expect(await screen.findByRole('button', { name: '编辑快捷项: 已保存网站' })).toBeVisible();
     expect(screen.queryByLabelText('Nook', { selector: '.app-loading' })).not.toBeInTheDocument();
     expect(document.title).toBe('新标签 — Nook');
+  });
+
+  it('opens the browser-specific rating page from the bottom-right prompt', async () => {
+    const user = userEvent.setup();
+    const adapter = createAdapter();
+    render(<App adapter={adapter} />);
+
+    await user.click(await screen.findByRole('button', { name: 'Enjoying Nook? Rate it' }));
+    expect(adapter.openReviewPage).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'Enjoying Nook? Rate it' })).not.toBeInTheDocument();
+  });
+
+  it('lets the user close and snooze the rating prompt', async () => {
+    const user = userEvent.setup();
+    const adapter = createAdapter();
+    render(<App adapter={adapter} />);
+
+    await user.click(await screen.findByRole('button', { name: 'Remind me again in three weeks' }));
+    expect(screen.queryByRole('button', { name: 'Enjoying Nook? Rate it' })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('nook-review-prompt')).toContain('snoozedUntil');
   });
 
   it('loads browser data and persists theme and shortcut changes', async () => {
@@ -164,6 +195,42 @@ describe('App integration', () => {
     await waitFor(() => {
       const saved = adapter.saveSettings.mock.calls.at(-1)?.[0] as SyncedSettings;
       expect(saved.pinnedOrder.slice(0, 2)).toEqual(['shortcut:github', 'shortcut:gmail']);
+    });
+  });
+
+  it('moves a later shortcut to the first position when dropped anywhere on the first card', async () => {
+    const adapter = createAdapter();
+    render(<App adapter={adapter} />);
+
+    const firstCard = (await screen.findByRole('button', { name: 'Edit shortcut: Gmail' })).closest('.shortcut') as HTMLDivElement;
+    const laterCard = screen.getByRole('button', { name: 'Edit shortcut: YouTube' }).closest('.shortcut') as HTMLDivElement;
+    vi.spyOn(firstCard, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 180,
+      bottom: 72,
+      width: 180,
+      height: 72,
+      toJSON: () => ({}),
+    });
+    let draggedKey = '';
+    const dataTransfer = {
+      effectAllowed: 'none',
+      dropEffect: 'none',
+      setData: (_type: string, value: string) => { draggedKey = value; },
+      getData: () => draggedKey,
+    };
+
+    fireEvent.dragStart(laterCard, { dataTransfer });
+    fireEvent.dragOver(firstCard, { dataTransfer, clientX: 170, clientY: 36 });
+    expect(firstCard).toHaveClass('drop-before');
+    fireEvent.drop(firstCard, { dataTransfer, clientX: 170, clientY: 36 });
+
+    await waitFor(() => {
+      const saved = adapter.saveSettings.mock.calls.at(-1)?.[0] as SyncedSettings;
+      expect(saved.pinnedOrder.slice(0, 2)).toEqual(['shortcut:youtube', 'shortcut:gmail']);
     });
   });
 
@@ -339,6 +406,9 @@ describe('App integration', () => {
     expect(document.querySelector('.app-shell')).toHaveAttribute('data-background', 'true');
 
     const file = new File(['image'], 'background.png', { type: 'image/png' });
+    const chooseImageButton = screen.getByRole('button', { name: 'Choose image' });
+    expect(chooseImageButton).toHaveClass('text-button');
+    expect(chooseImageButton.querySelector('svg')).toBeInTheDocument();
     await user.upload(screen.getByLabelText('Choose image'), file);
     await waitFor(() => expect(adapter.saveCustomBackground).toHaveBeenCalledWith(file));
     await waitFor(() => expect(adapter.saveLocalUiState).toHaveBeenCalledWith({
@@ -364,5 +434,171 @@ describe('App integration', () => {
       'href',
       'https://support.google.com/chrome/answer/11032183',
     );
+  });
+
+  it('offers and renders public GitHub data inside a matching shortcut', async () => {
+    const user = userEvent.setup();
+    const adapter = createAdapter();
+    let cachedEntry: Awaited<ReturnType<BrowserAdapter['loadPluginCache']>> = null;
+    adapter.savePluginCache.mockImplementation(async (_instanceId, entry) => {
+      cachedEntry = entry;
+    });
+    adapter.loadPluginCache.mockImplementation(async () => cachedEntry);
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({
+      full_name: 'openai/openai-node',
+      description: 'Official JavaScript library',
+      stargazers_count: 12000,
+      forks_count: 900,
+      open_issues_count: 42,
+      owner: { avatar_url: 'https://avatars.githubusercontent.com/u/14957082' },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App adapter={adapter} />);
+    await screen.findByRole('heading', { name: 'Pinned' });
+    await user.click(screen.getByRole('button', { name: 'Add shortcut' }));
+    await user.click(screen.getByRole('button', { name: 'Add a custom website' }));
+    await user.type(screen.getByLabelText('Name'), 'OpenAI Node');
+    const url = screen.getByLabelText('URL');
+    await user.clear(url);
+    await user.type(url, 'https://github.com/openai/openai-node');
+    expect(screen.getByRole('region', { name: 'GitHub repository live data is available' })).toBeVisible();
+    await user.click(screen.getByRole('checkbox', { name: 'Show live data on this shortcut' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const saved = adapter.saveSettings.mock.calls.at(-1)?.[0] as SyncedSettings;
+      expect(saved.shortcuts.at(-1)).toEqual(expect.objectContaining({
+        title: 'OpenAI Node',
+        enhancement: expect.objectContaining({ pluginId: 'github-repository', owner: 'openai', repository: 'openai-node' }),
+      }));
+    });
+    expect(screen.queryByRole('heading', { name: 'Widgets' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Edit shortcut: OpenAI Node' })).toBeVisible();
+    expect(screen.getByTitle('Stars')).toHaveTextContent('12K');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(adapter.requestPluginAccess).toHaveBeenCalledWith('github-repository');
+    expect(adapter.savePluginCache).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ pluginId: 'github-repository' }),
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('removes GitHub live data when it is unchecked while editing', async () => {
+    const user = userEvent.setup();
+    const repositoryShortcut = {
+      id: 'openai-node',
+      title: 'OpenAI Node',
+      url: 'https://github.com/openai/openai-node',
+      enhancement: {
+        pluginId: 'github-repository' as const,
+        owner: 'openai',
+        repository: 'openai-node',
+      },
+    };
+    const adapter = createAdapter({
+      ...DEFAULT_SETTINGS,
+      shortcuts: [repositoryShortcut],
+      shortcutGroups: [],
+      pinnedOrder: ['shortcut:openai-node'],
+    });
+    adapter.loadPluginCache.mockResolvedValue({
+      pluginId: 'github-repository',
+      configKey: 'openai/openai-node',
+      updatedAt: Date.now(),
+      data: {
+        kind: 'github-repository',
+        fullName: 'openai/openai-node',
+        description: 'Official JavaScript library',
+        stars: 12000,
+        forks: 900,
+        openIssues: 42,
+        url: 'https://github.com/openai/openai-node',
+        ownerAvatarUrl: 'https://avatars.githubusercontent.com/u/14957082',
+      },
+    });
+
+    render(<App adapter={adapter} />);
+    await user.click(await screen.findByRole('button', { name: 'Edit shortcut: OpenAI Node' }));
+    const enhancementToggle = screen.getByRole('checkbox', { name: 'Show live data on this shortcut' });
+    expect(enhancementToggle).toBeChecked();
+    await user.click(enhancementToggle);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const saved = adapter.saveSettings.mock.calls.at(-1)?.[0] as SyncedSettings;
+      expect(saved.shortcuts[0]).toEqual({
+        id: 'openai-node',
+        title: 'OpenAI Node',
+        url: 'https://github.com/openai/openai-node',
+      });
+    });
+    expect(adapter.removePluginCache).toHaveBeenCalledWith('openai-node');
+    expect(screen.getByRole('button', { name: 'OpenAI Nodegithub.com' })).toHaveTextContent('github.com');
+  });
+
+  it('renders configured GitHub account information inside a home-page shortcut', async () => {
+    const profileShortcut = {
+      id: 'github-account',
+      title: 'GitHub',
+      url: 'https://github.com/',
+      enhancement: {
+        pluginId: 'github-profile' as const,
+        username: 'octocat',
+      },
+    };
+    const adapter = createAdapter({
+      ...DEFAULT_SETTINGS,
+      shortcuts: [profileShortcut],
+      shortcutGroups: [],
+      pinnedOrder: ['shortcut:github-account'],
+    });
+    adapter.loadPluginCache.mockResolvedValue({
+      pluginId: 'github-profile',
+      configKey: 'octocat',
+      updatedAt: Date.now(),
+      data: {
+        kind: 'github-profile',
+        login: 'octocat',
+        name: 'The Octocat',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4',
+        followers: 23900,
+        following: 9,
+        publicRepositories: 8,
+        url: 'https://github.com/octocat',
+      },
+    });
+
+    render(<App adapter={adapter} />);
+
+    expect(await screen.findByText('@octocat')).toBeVisible();
+    expect(screen.getByTitle('Followers')).toHaveTextContent('23.9K');
+    expect(screen.getByTitle('Following')).toHaveTextContent('9');
+    expect(screen.getByTitle('Public repositories')).toHaveTextContent('8');
+  });
+
+  it('keeps component editing out of Settings and offers enhancements in the shortcut editor', async () => {
+    const user = userEvent.setup();
+    const repositoryShortcut = {
+      id: 'openai-node',
+      title: 'OpenAI Node',
+      url: 'https://github.com/openai/openai-node',
+    };
+    const adapter = createAdapter({
+      ...DEFAULT_SETTINGS,
+      shortcuts: [repositoryShortcut],
+      shortcutGroups: [],
+      pinnedOrder: ['shortcut:openai-node'],
+    });
+
+    render(<App adapter={adapter} />);
+    await screen.findByRole('heading', { name: 'Pinned' });
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.queryByRole('button', { name: 'Edit shortcut components' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('button', { name: 'Edit shortcut: OpenAI Node' }));
+    expect(screen.getByRole('region', { name: 'GitHub repository live data is available' })).toBeVisible();
   });
 });

@@ -1,4 +1,5 @@
 {
   "extName": { "message": "Nook — New Tab" },
-  "extDescription": { "message": "A calm new tab with your bookmark tree and browser tools." }
+  "extDescription": { "message": "A calm new tab with bookmarks, smart shortcuts, and browser tools." },
+  "actionAddCurrentPage": { "message": "Add this page to Nook" }
 }

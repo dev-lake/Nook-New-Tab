@@ -16,7 +16,9 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  Star,
   Sun,
+  X,
 } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { browserAdapter } from './browser-adapter';
@@ -26,6 +28,7 @@ import { PreferencePopover } from './components/PreferencePopover';
 import { SettingsPopover } from './components/SettingsPopover';
 import { ShortcutFavicon } from './components/ShortcutFavicon';
 import { ShortcutDialog } from './components/ShortcutDialog';
+import { ShortcutEnhancementMeta } from './components/ShortcutEnhancementMeta';
 import { ShortcutGroupDialog } from './components/ShortcutGroupDialog';
 import { ShortcutGroupMenu } from './components/ShortcutGroupMenu';
 import { ShortcutPickerDialog } from './components/ShortcutPickerDialog';
@@ -33,6 +36,16 @@ import { DEFAULT_SETTINGS } from './defaults';
 import { collectBookmarkFolders, findBookmarkFolder } from './bookmarks';
 import { greetingForHour, localeForIntl, resolveLocale, translations } from './i18n';
 import { buildNavigationTarget, displayDomain } from './search';
+import { enhancementInstanceForShortcut } from './plugins/shortcut-enhancements';
+import {
+  completeReviewPrompt,
+  loadReviewPromptState,
+  saveReviewPromptState,
+  shouldShowReviewPrompt,
+  snoozeReviewPrompt,
+} from './review-prompt';
+import { widgetConfigKey } from './plugins/registry';
+import type { WidgetData } from './plugins/types';
 import {
   groupOrderKey,
   normalizePinnedOrder,
@@ -83,6 +96,7 @@ export function App({ adapter = browserAdapter }: AppProps) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const [shortcutPickerOpen, setShortcutPickerOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  const [reviewPrompt, setReviewPrompt] = useState(() => loadReviewPromptState());
   const [toast, setToast] = useState('');
   const [draggedPinnedKey, setDraggedPinnedKey] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ key: string; placement: DropPlacement } | null>(null);
@@ -237,7 +251,6 @@ export function App({ adapter = browserAdapter }: AppProps) {
     () => normalizePinnedOrder(settings.pinnedOrder, settings.shortcuts, settings.shortcutGroups),
     [settings.pinnedOrder, settings.shortcutGroups, settings.shortcuts],
   );
-
   const updatePinnedScrollEdges = useCallback(() => {
     const list = shortcutListRef.current;
     if (!list) return;
@@ -344,6 +357,26 @@ export function App({ adapter = browserAdapter }: AppProps) {
     }
   }, [adapter, showToast, t.openFailed]);
 
+  const openReviewPage = useCallback(async () => {
+    const previous = reviewPrompt;
+    const completed = completeReviewPrompt();
+    setReviewPrompt(completed);
+    saveReviewPromptState(completed);
+    try {
+      await adapter.openReviewPage();
+    } catch {
+      setReviewPrompt(previous);
+      saveReviewPromptState(previous);
+      showToast(t.openFailed);
+    }
+  }, [adapter, reviewPrompt, showToast, t.openFailed]);
+
+  const dismissReviewPrompt = useCallback(() => {
+    const snoozed = snoozeReviewPrompt();
+    setReviewPrompt(snoozed);
+    saveReviewPromptState(snoozed);
+  }, []);
+
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -351,10 +384,15 @@ export function App({ adapter = browserAdapter }: AppProps) {
     if (query) void navigate(buildNavigationTarget(query, settings.searchEngine));
   };
 
-  const saveShortcut = (value: Omit<Shortcut, 'id'>) => {
+  const saveShortcut = async (value: Omit<Shortcut, 'id'>, prefetchedData?: WidgetData) => {
     const isEditing = editingShortcut !== null && editingShortcut !== undefined;
     const nextShortcut: Shortcut = isEditing
-      ? { ...editingShortcut, ...value }
+      ? {
+          id: editingShortcut.id,
+          title: value.title,
+          url: value.url,
+          ...(value.enhancement ? { enhancement: value.enhancement } : {}),
+        }
       : { id: crypto.randomUUID(), ...value };
     const nextShortcuts = isEditing
       ? settings.shortcuts.map((item) => item.id === nextShortcut.id ? nextShortcut : item)
@@ -362,14 +400,28 @@ export function App({ adapter = browserAdapter }: AppProps) {
     const nextOrder = isEditing
       ? currentPinnedOrder
       : [...currentPinnedOrder, shortcutOrderKey(nextShortcut.id)];
+    const previousInstance = isEditing && editingShortcut
+      ? enhancementInstanceForShortcut(editingShortcut)
+      : null;
+    const nextInstance = enhancementInstanceForShortcut(nextShortcut);
+    if (nextInstance && prefetchedData) {
+      await adapter.savePluginCache(nextShortcut.id, {
+        pluginId: nextInstance.pluginId,
+        configKey: widgetConfigKey(nextInstance),
+        updatedAt: Date.now(),
+        data: prefetchedData,
+      }).catch(() => undefined);
+    } else if (previousInstance && (!nextInstance || widgetConfigKey(previousInstance) !== widgetConfigKey(nextInstance))) {
+      await adapter.removePluginCache(nextShortcut.id).catch(() => undefined);
+    }
     setEditingShortcut(undefined);
     setShortcutPickerOpen(false);
-    void saveSettings({ ...settings, shortcuts: nextShortcuts, pinnedOrder: nextOrder }, t.shortcutSaved);
+    await saveSettings({ ...settings, shortcuts: nextShortcuts, pinnedOrder: nextOrder }, t.shortcutSaved);
   };
 
   const pinBookmark = (node: BookmarkNode) => {
     if (!node.url || pinnedShortcutUrls.has(new URL(node.url).toString())) return;
-    saveShortcut({
+    void saveShortcut({
       title: node.title.trim() || displayDomain(node.url),
       url: new URL(node.url).toString(),
     });
@@ -395,6 +447,9 @@ export function App({ adapter = browserAdapter }: AppProps) {
         : [];
     });
     const nextOrder = normalizePinnedOrder(nextOrderBase, next, nextGroups);
+    if (editingShortcut.enhancement) {
+      void adapter.removePluginCache(editingShortcut.id).catch(() => undefined);
+    }
     setEditingShortcut(undefined);
     void saveSettings({ ...settings, shortcuts: next, shortcutGroups: nextGroups, pinnedOrder: nextOrder }, t.shortcutDeleted);
   };
@@ -467,7 +522,12 @@ export function App({ adapter = browserAdapter }: AppProps) {
     void saveSettings({ ...settings, shortcutGroups: nextGroups, pinnedOrder: nextOrder }, t.groupDeleted);
   };
 
-  const dropPlacementForEvent = (event: React.DragEvent<HTMLElement>): DropPlacement => {
+  const dropPlacementForEvent = (
+    event: React.DragEvent<HTMLElement>,
+    targetKey: string,
+    sourceKey = draggedPinnedKey || event.dataTransfer.getData('text/plain'),
+  ): DropPlacement => {
+    if (targetKey === currentPinnedOrder[0] && sourceKey !== targetKey) return 'before';
     const bounds = event.currentTarget.getBoundingClientRect();
     const verticalPosition = (event.clientY - bounds.top) / bounds.height;
     if (verticalPosition < 0.35) return 'before';
@@ -480,7 +540,7 @@ export function App({ adapter = browserAdapter }: AppProps) {
     const sourceKey = draggedPinnedKey || event.dataTransfer.getData('text/plain');
     const placement = dropTarget?.key === targetKey
       ? dropTarget.placement
-      : dropPlacementForEvent(event);
+      : dropPlacementForEvent(event, targetKey, sourceKey);
     setDraggedPinnedKey(null);
     setDropTarget(null);
     const nextOrder = reorderPinnedOrder(currentPinnedOrder, sourceKey, targetKey, placement);
@@ -681,7 +741,7 @@ export function App({ adapter = browserAdapter }: AppProps) {
                   onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
                     event.preventDefault();
                     event.dataTransfer.dropEffect = 'move';
-                    const placement = dropPlacementForEvent(event);
+                    const placement = dropPlacementForEvent(event, orderKey);
                     if (dropTarget?.key !== orderKey || dropTarget.placement !== placement) {
                       setDropTarget({ key: orderKey, placement });
                     }
@@ -697,15 +757,29 @@ export function App({ adapter = browserAdapter }: AppProps) {
                   const shortcut = shortcutById.get(orderKey.slice('shortcut:'.length));
                   if (!shortcut) return null;
                   return (
-                    <div className={`shortcut${dragClassName}`} key={orderKey} {...dragHandlers}>
+                    <div
+                      className={`shortcut${dragClassName}`}
+                      key={orderKey}
+                      {...dragHandlers}
+                    >
                       <button className="shortcut-open" type="button" onClick={() => void navigate(shortcut.url)}>
                         <ShortcutFavicon adapter={adapter} title={shortcut.title} url={shortcut.url} />
-                        <span><strong>{shortcut.title}</strong><small>{displayDomain(shortcut.url)}</small></span>
+                        <span>
+                          <strong>{shortcut.title}</strong>
+                          {shortcut.enhancement
+                            ? <ShortcutEnhancementMeta adapter={adapter} shortcut={shortcut} locale={locale} t={t} />
+                            : <small>{displayDomain(shortcut.url)}</small>}
+                        </span>
                       </button>
                       <span className="shortcut-drag-indicator" title={t.dragShortcut(shortcut.title)} aria-hidden="true">
                         <GripVertical size={13} />
                       </span>
-                      <button className="shortcut-edit" type="button" aria-label={`${t.editShortcut}: ${shortcut.title}`} onClick={() => setEditingShortcut(shortcut)}>
+                      <button
+                        className="shortcut-edit"
+                        type="button"
+                        aria-label={`${t.editShortcut}: ${shortcut.title}`}
+                        onClick={() => setEditingShortcut(shortcut)}
+                      >
                         <Edit3 size={14} />
                       </button>
                     </div>
@@ -716,7 +790,11 @@ export function App({ adapter = browserAdapter }: AppProps) {
                 if (!group) return null;
                 const members = group.shortcutIds.flatMap((id) => shortcutById.get(id) ?? []);
                 return (
-                  <div className={`shortcut shortcut-group-card${dragClassName}`} key={orderKey} {...dragHandlers}>
+                  <div
+                    className={`shortcut shortcut-group-card${dragClassName}`}
+                    key={orderKey}
+                    {...dragHandlers}
+                  >
                     <button
                       className="shortcut-open group-open"
                       type="button"
@@ -772,6 +850,8 @@ export function App({ adapter = browserAdapter }: AppProps) {
 
       {editingShortcut !== undefined && (
         <ShortcutDialog
+          adapter={adapter}
+          locale={locale}
           shortcut={editingShortcut}
           t={t}
           onCancel={() => setEditingShortcut(undefined)}
@@ -810,6 +890,7 @@ export function App({ adapter = browserAdapter }: AppProps) {
       {openShortcutGroup && (
         <ShortcutGroupMenu
           adapter={adapter}
+          locale={locale}
           group={openShortcutGroup}
           shortcuts={openGroupShortcuts}
           t={t}
@@ -826,6 +907,24 @@ export function App({ adapter = browserAdapter }: AppProps) {
         <Check size={16} />
         {toast}
       </div>
+
+      {shouldShowReviewPrompt(reviewPrompt, now.getTime()) && (
+        <aside className="rating-prompt" aria-label={t.rateNook}>
+          <button className="rating-prompt-link" type="button" onClick={() => void openReviewPage()}>
+            <Star size={15} aria-hidden="true" />
+            <span>{t.rateNook}</span>
+          </button>
+          <button
+            className="rating-prompt-close"
+            type="button"
+            aria-label={t.dismissRatingPrompt}
+            title={t.dismissRatingPrompt}
+            onClick={dismissReviewPrompt}
+          >
+            <X size={13} aria-hidden="true" />
+          </button>
+        </aside>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ export const DEFAULT_SHORTCUTS: Shortcut[] = [
 ];
 
 export const DEFAULT_SETTINGS: SyncedSettings = {
-  schemaVersion: 3,
+  schemaVersion: 8,
   locale: 'auto',
   theme: 'system',
   searchEngine: 'google',

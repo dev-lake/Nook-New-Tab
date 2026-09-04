@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { ChevronDown, Download, ExternalLink, Image, PanelBottomClose, Search, Settings, Trash2, Upload, X } from 'lucide-react';
 import { BUILT_IN_BACKGROUNDS } from '../backgrounds';
 import type { Translation } from '../i18n';
@@ -38,6 +39,7 @@ export function SettingsPopover({
   onRemoveCustomBackground,
   onImportBookmarks,
 }: SettingsPopoverProps) {
+  const backgroundInputRef = useRef<HTMLInputElement>(null);
   if (!open) return null;
 
   return (
@@ -98,19 +100,26 @@ export function SettingsPopover({
           )}
         </div>
         <div className="background-actions">
-          <label className="settings-action background-upload">
-            <Upload size={16} />
+          <button
+            className="text-button background-upload"
+            type="button"
+            onClick={() => backgroundInputRef.current?.click()}
+          >
+            <Upload size={14} aria-hidden="true" />
             {t.uploadBackground}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) onCustomBackgroundUpload(file);
-                event.currentTarget.value = '';
-              }}
-            />
-          </label>
+          </button>
+          <input
+            ref={backgroundInputRef}
+            className="background-upload-input"
+            type="file"
+            aria-label={t.uploadBackground}
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) onCustomBackgroundUpload(file);
+              event.currentTarget.value = '';
+            }}
+          />
           {customBackgroundUrl && (
             <button className="icon-button remove-background" type="button" onClick={onRemoveCustomBackground} aria-label={t.removeBackground}>
               <Trash2 size={16} />

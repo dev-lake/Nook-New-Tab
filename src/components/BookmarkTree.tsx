@@ -144,7 +144,6 @@ export function BookmarkTree({
                 <BookmarkTreeNode
                   key={node.id}
                   node={node}
-                  depth={0}
                   expandedIds={expandedIds}
                   adapter={adapter}
                   t={t}
@@ -165,7 +164,6 @@ export function BookmarkTree({
 
 type BookmarkTreeNodeProps = {
   node: BookmarkNode;
-  depth: number;
   expandedIds: Set<string>;
   adapter: Pick<BrowserAdapter, 'getFaviconUrl'>;
   t: Translation;
@@ -178,7 +176,6 @@ type BookmarkTreeNodeProps = {
 
 function BookmarkTreeNode({
   node,
-  depth,
   expandedIds,
   adapter,
   t,
@@ -198,7 +195,6 @@ function BookmarkTreeNode({
           href={node.url}
           role="treeitem"
           aria-label={t.openBookmark(bookmarkName)}
-          style={{ '--depth': depth } as React.CSSProperties}
           onClick={(event) => {
             event.preventDefault();
             onNavigate(node.url!);
@@ -209,7 +205,6 @@ function BookmarkTreeNode({
             <span>{bookmarkName}</span>
             <small>{displayDomain(node.url)}</small>
           </span>
-          <ExternalLink className="external-icon" size={14} aria-hidden="true" />
         </a>
         <button
           className="bookmark-pin"
@@ -239,7 +234,6 @@ function BookmarkTreeNode({
         aria-expanded={expanded}
         aria-controls={childId}
         aria-label={expanded ? t.collapseFolder(name, count) : t.expandFolder(name, count)}
-        style={{ '--depth': depth } as React.CSSProperties}
         onClick={() => onToggle(node, !expanded)}
         onKeyDown={(event) => {
           onTreeKeyDown(event);
@@ -268,7 +262,6 @@ function BookmarkTreeNode({
           <BookmarkTreeNode
             key={child.id}
             node={child}
-            depth={depth + 1}
             expandedIds={expandedIds}
             adapter={adapter}
             t={t}

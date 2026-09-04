@@ -16,7 +16,33 @@ export type Translation = {
   browserUtilities: string;
   utilityCount: string;
   pinned: string;
+  githubRepositoryWidget: string;
+  githubRepositoryWidgetHelp: string;
+  githubProfileWidget: string;
+  githubProfileWidgetHelp: string;
+  githubUsername: string;
+  githubUsernameHelp: string;
+  invalidGitHubUsername: string;
+  widgetLoadFailed: string;
+  pluginPermissionDenied: string;
+  enhancementAvailable: (name: string) => string;
+  enableEnhancement: string;
+  enhancementUpdating: string;
+  githubRepositoryUnavailable: string;
+  githubRepositoryNotFound: string;
+  githubProfileNotFound: string;
+  stars: string;
+  forks: string;
+  openIssues: string;
+  followers: string;
+  following: string;
+  publicRepositories: string;
   addShortcut: string;
+  addCurrentPage: string;
+  addCurrentPageHelp: string;
+  confirmAdd: string;
+  currentPageUnavailable: string;
+  shortcutAlreadyExists: string;
   createGroup: string;
   editGroup: string;
   deleteGroup: string;
@@ -67,6 +93,8 @@ export type Translation = {
   dark: string;
   auto: string;
   privacy: string;
+  rateNook: string;
+  dismissRatingPrompt: string;
   folderExpanded: (name: string) => string;
   folderCollapsed: (name: string) => string;
   expandFolder: (name: string, count: number) => string;
@@ -113,7 +141,33 @@ export const translations: Record<Locale, Translation> = {
     browserUtilities: 'Browser utilities',
     utilityCount: '6 tools',
     pinned: 'Pinned',
+    githubRepositoryWidget: 'GitHub repository',
+    githubRepositoryWidgetHelp: 'Stars, forks, and open issues for a public repository',
+    githubProfileWidget: 'GitHub profile',
+    githubProfileWidgetHelp: 'Followers, following, and public repositories for an account',
+    githubUsername: 'GitHub username',
+    githubUsernameHelp: 'Choose the public account to display; Profile URLs are filled automatically',
+    invalidGitHubUsername: 'Enter a valid GitHub username.',
+    widgetLoadFailed: 'Could not update live data.',
+    pluginPermissionDenied: 'Allow access to this data provider to enable live shortcut data.',
+    enhancementAvailable: (name) => `${name} live data is available`,
+    enableEnhancement: 'Show live data on this shortcut',
+    enhancementUpdating: 'Updating live data…',
+    githubRepositoryUnavailable: 'That public repository could not be loaded.',
+    githubRepositoryNotFound: 'Public repository not found. Check its URL and visibility.',
+    githubProfileNotFound: 'GitHub account not found. Check the username.',
+    stars: 'Stars',
+    forks: 'Forks',
+    openIssues: 'Open issues',
+    followers: 'Followers',
+    following: 'Following',
+    publicRepositories: 'Public repositories',
     addShortcut: 'Add shortcut',
+    addCurrentPage: 'Add current page',
+    addCurrentPageHelp: 'Review or edit the details before adding this shortcut to Nook.',
+    confirmAdd: 'Add to Pinned',
+    currentPageUnavailable: 'Only HTTP and HTTPS pages can be added.',
+    shortcutAlreadyExists: 'This page is already in Pinned.',
     createGroup: 'Create group',
     editGroup: 'Edit group',
     deleteGroup: 'Dissolve group',
@@ -163,7 +217,9 @@ export const translations: Record<Locale, Translation> = {
     light: 'Light',
     dark: 'Dark',
     auto: 'Automatic',
-    privacy: 'Bookmarks come from this browser; preferences sync with your browser account.',
+    privacy: 'Bookmarks stay in this browser; enabled components connect directly to their data provider.',
+    rateNook: 'Enjoying Nook? Rate it',
+    dismissRatingPrompt: 'Remind me again in three weeks',
     folderExpanded: (name) => `${name} expanded`,
     folderCollapsed: (name) => `${name} collapsed`,
     expandFolder: (name, count) => `Expand ${name}, ${count} bookmarks`,
@@ -208,7 +264,33 @@ export const translations: Record<Locale, Translation> = {
     browserUtilities: '浏览器工具',
     utilityCount: '6 项工具',
     pinned: '已固定',
+    githubRepositoryWidget: 'GitHub 仓库',
+    githubRepositoryWidgetHelp: '显示公开仓库的 Stars、Forks 和待处理问题',
+    githubProfileWidget: 'GitHub 账号',
+    githubProfileWidgetHelp: '显示账号的关注者、正在关注和公开仓库数量',
+    githubUsername: 'GitHub 用户名',
+    githubUsernameHelp: '选择要显示的公开账号；Profile 网址会自动填写',
+    invalidGitHubUsername: '请输入有效的 GitHub 用户名。',
+    widgetLoadFailed: '无法更新实时数据。',
+    pluginPermissionDenied: '需要允许访问对应的数据服务，才能显示快捷项实时数据。',
+    enhancementAvailable: (name) => `可开启${name}实时数据`,
+    enableEnhancement: '在此快捷项中显示实时数据',
+    enhancementUpdating: '正在更新实时数据…',
+    githubRepositoryUnavailable: '无法读取该公开仓库。',
+    githubRepositoryNotFound: '未找到公开仓库，请检查网址及仓库可见性。',
+    githubProfileNotFound: '未找到 GitHub 账号，请检查用户名。',
+    stars: 'Stars',
+    forks: 'Forks',
+    openIssues: '待处理问题',
+    followers: '关注者',
+    following: '正在关注',
+    publicRepositories: '公开仓库',
     addShortcut: '添加快捷项',
+    addCurrentPage: '添加当前页面',
+    addCurrentPageHelp: '添加到 Nook 前，可以确认或修改以下信息。',
+    confirmAdd: '添加到已固定',
+    currentPageUnavailable: '只能添加 HTTP 或 HTTPS 页面。',
+    shortcutAlreadyExists: '此页面已存在于已固定快捷项中。',
     createGroup: '新建分组',
     editGroup: '编辑分组',
     deleteGroup: '解散分组',
@@ -258,7 +340,9 @@ export const translations: Record<Locale, Translation> = {
     light: '浅色',
     dark: '深色',
     auto: '自动',
-    privacy: '书签来自本浏览器；偏好设置通过浏览器账号同步。',
+    privacy: '书签保留在本浏览器；启用的组件会直接连接对应的数据服务。',
+    rateNook: '喜欢 Nook？给个好评',
+    dismissRatingPrompt: '关闭并在三周后提醒',
     folderExpanded: (name) => `已展开${name}`,
     folderCollapsed: (name) => `已折叠${name}`,
     expandFolder: (name, count) => `展开${name}，${count} 个书签`,
@@ -303,7 +387,33 @@ export const translations: Record<Locale, Translation> = {
     browserUtilities: 'ブラウザツール',
     utilityCount: '6 ツール',
     pinned: 'ピン留め',
+    githubRepositoryWidget: 'GitHub リポジトリ',
+    githubRepositoryWidgetHelp: '公開リポジトリの Stars、Forks、未解決 Issue を表示',
+    githubProfileWidget: 'GitHub アカウント',
+    githubProfileWidgetHelp: 'フォロワー、フォロー中、公開リポジトリ数を表示',
+    githubUsername: 'GitHub ユーザー名',
+    githubUsernameHelp: '表示する公開アカウントを指定します。Profile URL は自動入力されます',
+    invalidGitHubUsername: '有効な GitHub ユーザー名を入力してください。',
+    widgetLoadFailed: 'ライブデータを更新できませんでした。',
+    pluginPermissionDenied: 'ショートカットにライブデータを表示するには、データ提供元へのアクセスを許可してください。',
+    enhancementAvailable: (name) => `${name}のライブデータを利用できます`,
+    enableEnhancement: 'このショートカットにライブデータを表示',
+    enhancementUpdating: 'ライブデータを更新中…',
+    githubRepositoryUnavailable: 'その公開リポジトリを読み込めませんでした。',
+    githubRepositoryNotFound: '公開リポジトリが見つかりません。URL と公開設定を確認してください。',
+    githubProfileNotFound: 'GitHub アカウントが見つかりません。ユーザー名を確認してください。',
+    stars: 'Stars',
+    forks: 'Forks',
+    openIssues: '未解決 Issue',
+    followers: 'フォロワー',
+    following: 'フォロー中',
+    publicRepositories: '公開リポジトリ',
     addShortcut: 'ショートカットを追加',
+    addCurrentPage: '現在のページを追加',
+    addCurrentPageHelp: 'Nook に追加する前に内容を確認または編集できます。',
+    confirmAdd: 'ピン留めに追加',
+    currentPageUnavailable: 'HTTP または HTTPS ページのみ追加できます。',
+    shortcutAlreadyExists: 'このページはすでにピン留めされています。',
     createGroup: 'グループを作成',
     editGroup: 'グループを編集',
     deleteGroup: 'グループを解除',
@@ -353,7 +463,9 @@ export const translations: Record<Locale, Translation> = {
     light: 'ライト',
     dark: 'ダーク',
     auto: '自動',
-    privacy: 'ブックマークはこのブラウザから取得し、設定はブラウザアカウントで同期されます。',
+    privacy: 'ブックマークはブラウザ内に留まり、有効なコンポーネントはデータ提供元へ直接接続します。',
+    rateNook: 'Nook を気に入ったら評価',
+    dismissRatingPrompt: '閉じて3週間後に再通知',
     folderExpanded: (name) => `${name}を展開しました`,
     folderCollapsed: (name) => `${name}を折りたたみました`,
     expandFolder: (name, count) => `${name}を展開、${count}件のブックマーク`,
